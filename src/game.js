@@ -968,10 +968,23 @@ function ghostHand(x,y,rot,sc,a){if(a<=0)return;const px=DPR*cssW/W*sc,Wd=96,Ht=
   h.strokeStyle=INK;h.lineWidth=1.1;h.globalAlpha=.45;  // light anatomy: nails, knuckle creases, tendons
   for(const f of FINGERS){const [b,j,t,w]=f,dx=t[0]-j[0],dy=t[1]-j[1],d=Math.hypot(dx,dy),ux=dx/d,uy=dy/d,nx=-uy,ny=ux;
     h.beginPath();h.moveTo(t[0]-ux*5+nx*w*.32,t[1]-uy*5+ny*w*.32);h.quadraticCurveTo(t[0]-ux*7.5,t[1]-uy*7.5,t[0]-ux*5-nx*w*.32,t[1]-uy*5-ny*w*.32);h.stroke();}
-  h.globalAlpha=.25;for(const f of FINGERS.slice(0,3)){h.beginPath();h.moveTo(f[0][0]*.6,82);h.lineTo(f[0][0],f[0][1]+4);h.stroke();}
   h.globalAlpha=1;h.setTransform(1,0,0,1,0,0);h.globalCompositeOperation='destination-out';
   const g=h.createLinearGradient(0,(oy+72)*px,0,Ht*px);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,1)');h.fillStyle=g;h.fillRect(0,0,handCv.width,handCv.height);h.globalCompositeOperation='source-over';
   ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha=a*.8;ctx.drawImage(handCv,-(ox-3)*sc,-(oy+9)*sc,Wd*sc,Ht*sc);ctx.restore();ctx.globalAlpha=1;}
+/* palm-up hand seen from the side; fingers curl by `curl` (0 straight … 1 hooked). (x,y) = knuckles, dir=+1 fingers point right. */
+const SIDE_F=[[[0,-6],32,7.2],[[0,-1.5],35,7.4],[[-1,3],32,7],[[-3,7],25,6.4]];
+function ghostHandSide(x,y,dir,sc,a,curl){if(a<=0)return;const px=DPR*cssW/W*sc,Wd=96,Ht=70,ox=52,oy=38;handCv.width=Math.ceil(Wd*px);handCv.height=Math.ceil(Ht*px);
+  const h=handX;h.setTransform(px,0,0,px,ox*px,oy*px);h.lineJoin='round';h.lineCap='round';
+  const chain=(b,L,k)=>{const pts=[b];let ang=.08,x0=b[0],y0=b[1];for(const f of [.42,.33,.25]){ang-=curl*.85*k;x0+=Math.cos(ang)*L*f;y0+=Math.sin(ang)*L*f;pts.push([x0,y0]);}return pts;};
+  const line=(pts,w)=>{h.lineWidth=w;h.beginPath();h.moveTo(...pts[0]);for(let i=1;i<pts.length-1;i++){const m=[(pts[i][0]+pts[i+1][0])/2,(pts[i][1]+pts[i+1][1])/2];h.quadraticCurveTo(pts[i][0],pts[i][1],m[0],m[1]);}h.lineTo(...pts.at(-1));h.stroke();};
+  const F=SIDE_F.map(([b,L,w],i)=>[chain(b,L,1-i*.08),w]);
+  const PALM2=[[-50,-8],[-24,-10],[-6,-9],[2,-5],[3,3],[-1,10],[-16,12],[-50,11]];
+  const shapes=e=>{spath(h,PALM2);h.fill();if(e){h.lineWidth=e;h.stroke();}for(const [pts,w] of F)line(pts,w+e);line([[-26,-8],[-14,-16],[-1,-20]],7.4+e);};
+  h.strokeStyle=INK;h.fillStyle=INK;shapes(3.2);h.strokeStyle=PAPER;h.fillStyle=PAPER;shapes(0);
+  h.strokeStyle=INK;h.lineWidth=1;h.globalAlpha=.4;for(let i=1;i<F.length;i++){const [pts,w]=F[i];h.beginPath();h.moveTo(pts[0][0]+2,pts[0][1]-w*.42);for(const q of pts.slice(1,3))h.lineTo(q[0],q[1]-w*.42);h.stroke();}
+  h.globalAlpha=1;h.setTransform(1,0,0,1,0,0);h.globalCompositeOperation='destination-out';
+  const g=h.createLinearGradient(0,0,(ox-24)*px,0);g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(1,'rgba(0,0,0,0)');h.fillStyle=g;h.fillRect(0,0,handCv.width,handCv.height);h.globalCompositeOperation='source-over';
+  ctx.save();ctx.translate(x,y);ctx.scale(dir,1);ctx.globalAlpha=a*.8;ctx.drawImage(handCv,-ox*sc,-oy*sc,Wd*sc,Ht*sc);ctx.restore();ctx.globalAlpha=1;}
 function startAnim(kind,c,opt={}){G.anim={kind,c,t:0,dur:kind==='paw'?2.7:2.5,...opt};if(kind==='chin'){c.setBeh('sit');c.mv=null;c.decideT=3;}}
 const ease=t=>t<0?0:t>1?1:t*t*(3-2*t);
 function drawAnim(dt){const A=G.anim;if(!A)return;A.t+=dt;const t=A.t,c=A.c;
@@ -980,7 +993,7 @@ function drawAnim(dt){const A=G.anim;if(!A)return;A.t+=dt;const t=A.t,c=A.c;
     const inK=ease(t/.55),outK=ease((t-2)/.45),sx=cx+c.facing*(26*c.S)*(1-inK)+c.facing*30*c.S*outK,sy=cy+70*c.S*(1-inK)+60*c.S*outK;
     const rub=t>.55&&t<2?Math.sin((t-.55)*10)*5*c.S:0;
     if(c.chinOn){ctx.globalAlpha=.5;for(let i=0;i<3;i++)inkL(ctx,[[cx-8*c.S+i*6*c.S+rub*.4,cy+2*c.S],[cx-6*c.S+i*6*c.S+rub*.6,cy+6*c.S]],1520+i,1.1,.3);ctx.globalAlpha=1;}
-    ghostHand(sx+rub,sy+2*c.S,c.facing*-.15,.5*c.S,Math.min(1,t/.3)*(1-outK)*.95);return;}
+    const curl=t>.55&&t<2?.3+.32*(Math.sin((t-.55)*13)*.5+.5):.25;ghostHandSide(sx+c.facing*14*c.S,sy+5*c.S+rub*.25,-c.facing,.55*c.S,Math.min(1,t/.3)*(1-outK)*.95,curl);return;}
   if(A.kind==='paw'){const fade=Math.min(1,t/.25)*(1-ease((t-2.35)/.35)),pw=Math.min(W*.86,400),ph=pw*.72,px=W/2,py=Math.max(FT*.75,ph/2+70),k=pw/320;
     ctx.globalAlpha=fade*.28;ctx.fillStyle=INK;ctx.fillRect(0,0,W,H);ctx.globalAlpha=fade;
     const x0=px-pw/2,y0=py-ph/2;ctx.fillStyle='#efe2cd';ctx.fillRect(x0,y0,pw,ph);
