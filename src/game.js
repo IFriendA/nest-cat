@@ -905,6 +905,44 @@ function drawLoupe(dt){const ptr=G.ptr,c=G.cat;LP.a=clamp(LP.a+(LP.on?dt*7:-dt*6
   const reg=c.petting&&c.petRegion?REG_TXT[c.petRegion]:(ptr.downT<.6&&ptr.moved<8?'按住抱起':'');const cap=caption(c),mood=c.m.annoy>.4?'不太高興':cap?cap[0]:'';
   const t=[reg,mood].filter(Boolean).join(' · ');if(t)label(x,y+R+18,t);
   ctx.restore();}
+/* ---- moments: tap the cat, see what you can do right now ----
+   Each row: when(cat) → up to 3 choices. A choice is [label, react(cat) → result line]. Add moments by adding rows. */
+const MOMENTS=[
+ {when:c=>c.beh==='nap',opts:[
+  ['偷摸肉墊',c=>{if(c.q.tol<.35){c.kick({earUp:-3});return '牠把腳收進身體底下，皺了皺眉，繼續睡。';}c.kick({earUp:2,headTilt:2});c.m.trust=Math.min(1,c.m.trust+.01);return '牠的腳趾張開又縮回去，沒醒，咂咂嘴繼續睡。';}],
+  ['輕摸頭',c=>{if(c.grudge()>.4){c.kick({earUp:-3});return '牠半睜開眼瞪了你一下，又閉上了。';}c.kick({earUp:3});c.remember('petsleep',.25,.3);return '耳朵抖了一下，發出一聲短短的呼嚕。';}],
+  ['讓牠睡',c=>{c.m.trust=Math.min(1,c.m.trust+.01);return '你沒有吵牠。牠睡得很沉，肚子一起一伏。';}]]},
+ {when:c=>c.beh==='hide',opts:[
+  ['戳戳箱子',c=>{if(c.q.bold<.4){c.m.fear+=.1;return '牠往箱子裡面縮得更深了。';}c.kick({paw:6});return '箱子的洞裡伸出一隻爪子，拍了你一下又縮回去。';}],
+  ['往裡面看',c=>{c.kick({earUp:-2});return '黑暗裡兩隻眼睛瞪得圓圓的，看著你。';}],
+  ['不打擾',c=>{c.m.fear=Math.max(0,c.m.fear-.1);return '過了一會，牠從箱子邊探出半顆頭。';}]]},
+ {when:c=>c.beh==='window'||c.beh==='watch',opts:[
+  ['摸背',c=>{c.kick({tailAmp:2});return c.q.soc>.6?'牠回頭看了你一眼，又轉回去看窗外。':'尾巴甩了一下，不理你。';}],
+  ['陪牠一起看',c=>{c.m.trust=Math.min(1,c.m.trust+.01);return '你們一起看著外面。牠的尾巴尖輕輕晃著。';}],
+  ['叫牠',c=>{c.kick({earUp:2});return '牠一隻耳朵轉向你，身體沒動。';}]]},
+ {when:c=>c.beh==='eat'||c.beh==='drink',opts:[
+  ['摸背',c=>{c.kick({crouch:2});return c.q.tol<.45?'牠壓低身子護著碗，邊吃邊瞄你。':'牠邊吃邊發出小小的呼嚕聲。';}],
+  ['蹲在旁邊看',c=>'牠吃得很專心，鬍鬚一抖一抖的。'],
+  ['把碗挪近一點',c=>{c.kick({headUp:-2});return '牠跟著碗往前挪了一步，繼續吃。';}]]},
+ {when:c=>c.beh==='groom',opts:[
+  ['摸牠',c=>{c.kick({headTilt:2});return c.q.soc>.5?'牠停下來舔了你的手一下，又繼續舔自己。':'牠換了一邊繼續舔，當你不存在。';}],
+  ['看牠舔毛',c=>'牠把爪子舔濕，認真地洗了一遍臉。'],
+  ['不打擾',c=>'牠舔完了，滿意地坐著。']]},
+ {when:c=>['approach','rub','greet'].includes(c.beh),opts:[
+  ['摸摸牠',c=>{c.setBeh('rub');return '牠用頭頂著你的手，蹭了一圈。';}],
+  ['慢慢眨眼',c=>{if(c.te()>.5){c.slowBlink=1.1;c.m.trust=Math.min(1,c.m.trust+.02);return '牠也慢慢眨了一下眼睛。這是貓在說「我信任你」。';}return '牠盯著你，沒有眨眼。還需要一點時間。';}],
+  ['就這樣待著',c=>{c.setBeh('sit');c.m.trust=Math.min(1,c.m.trust+.01);return '牠在你旁邊坐下，尾巴繞住了腳。';}]]},
+ {when:c=>true,opts:[
+  ['摸下巴',c=>{if(c.te()<.3){c.kick({earUp:-2});return '牠往後躲了一下。還不夠信任你。';}c.kick({headUp:3});return '牠把頭抬高，把下巴送到你手上。';}],
+  ['慢慢眨眼',c=>{if(c.te()>.5){c.slowBlink=1.1;c.m.trust=Math.min(1,c.m.trust+.02);return '牠也慢慢眨了一下眼睛。這是貓在說「我信任你」。';}return '牠看著你，沒有眨眼。';}],
+  ['叫牠的名字',c=>{c.kick({earUp:3});if(c.te()>.5&&c.q.soc>.4){c.decideT=0;return '牠「喵」了一聲，朝你走過來。';}return '牠的耳朵動了一下，沒有過來。';}]]},
+];
+let momentFor=null,momentT=0;
+function openMoments(c){if(!c||c.held||c.inside)return;const row=MOMENTS.find(r=>r.when(c));const box=$('moments');
+  box.innerHTML=row.opts.map(([l],i)=>`<button type="button" class="btn" data-i="${i}">${l}</button>`).join('');
+  box.style.left=clamp(c.head.x*cssW/W,90,cssW-90)+'px';box.style.top=Math.max(120,c.head.y*cssH/H-36*c.S*cssH/H)+'px';box.hidden=false;momentFor=c.beh;momentT=G.t;
+  box.querySelectorAll('button').forEach(b=>b.onclick=e=>{e.stopPropagation();const [l,fn]=row.opts[+b.dataset.i];const txt=fn(c);closeMoments();G.lastInteract=G.gmin;if(txt){toast(l,txt);log(`你${l}。${txt}`);}});}
+function closeMoments(){const b=$('moments');if(b)b.hidden=true;momentFor=null;}
 function label(x,y,t){ctx.font='700 14px LXGW WenKai TC, serif';const w=ctx.measureText(t).width+18;x=clamp(x,w/2+6,W-w/2-6);
   ctx.globalAlpha=.94;ink(ctx,box4(x-w/2,y-13,x+w/2,y+10),1470,{fill:PAPER,lw:1.4,amp:.5});ctx.fillStyle=INK;ctx.textAlign='center';ctx.fillText(t,x,y+3);ctx.textAlign='left';ctx.globalAlpha=1;}
 function drawCursor(){const ptr=G.ptr;if(!ptr.in||G.door.state==='closed'&&G.tool==='wand')return;
@@ -985,7 +1023,7 @@ function render(dt){
 function toLocal(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
 const inRect=(x,y,cx,cy,hw,hh)=>Math.abs(x-cx)<hw&&Math.abs(y-cy)<hh;
 cv.addEventListener('pointermove',e=>{const q=toLocal(e),p=G.ptr;p.type=e.pointerType;if(e.pointerType==='mouse'||p.down){if(p.down)p.moved+=Math.hypot(q.x-p.x,q.y-p.y);p.x=q.x;p.y=q.y;p.in=true;if(p.lx===null){p.lx=q.x;p.ly=q.y;}}});
-cv.addEventListener('pointerdown',e=>{if(!G.adopted||G.revoked)return;const q=toLocal(e),p=G.ptr,c=G.cat,L=G.L;p.type=e.pointerType;p.x=q.x;p.y=q.y;p.lx=q.x;p.ly=q.y;p.in=true;p.down=true;p.downT=0;p.moved=0;
+cv.addEventListener('pointerdown',e=>{closeMoments();if(!G.adopted||G.revoked)return;const q=toLocal(e),p=G.ptr,c=G.cat,L=G.L;p.type=e.pointerType;p.x=q.x;p.y=q.y;p.lx=q.x;p.ly=q.y;p.in=true;p.down=true;p.downT=0;p.moved=0;
   try{cv.setPointerCapture(e.pointerId);}catch(_){}
   if(G.door.state==='closed'||G.door.state==='closing'){if(G.tool==='treat')leaveSnack();else knock(q.x,q.y);return;}
   if(G.tool==='wand'||G.tool==='broom')return;
@@ -1003,6 +1041,7 @@ cv.addEventListener('pointerdown',e=>{if(!G.adopted||G.revoked)return;const q=to
   if(inRect(q.x,q.y,L.box.x,L.box.y-L.box.h/2,L.box.w/2,L.box.h)){G.fx.ripples.push({x:q.x,y:L.box.y,t:0});c.hear(q.x,L.box.y,.6);if(c.beh==='hide'){c.m.fear+=.2*(1-c.q.bold);c.kick({mouth:4});}return;}
   if(q.y>FT-10){G.fx.ripples.push({x:q.x,y:floorY(q.y),t:0});c.hear(q.x,floorY(q.y));}});
 const up=e=>{const p=G.ptr,c=G.cat;
+  if(G.tool==='hand'&&c&&p.petCat===c&&!c.held&&p.downT<.3&&p.moved<8&&G.door.state==='open')openMoments(c);
   if(p.grabBall){p.grabBall=false;const b=G.ball;b.vx=clamp(b.vx,-900,900);b.vy=clamp(b.vy,-700,700);b.vz=Math.min(260,Math.hypot(b.vx,b.vy)*.25);}
   if(c&&c.held){c.drop(p.x,p.y+60*c.S);}
   p.down=false;p.petCat=null;if(e.pointerType!=='mouse')p.in=false;};
@@ -1025,6 +1064,7 @@ function buildTools(){$('tools').innerHTML=[['hand','摸摸'],['treat','零食']
   $('needs').innerHTML=[['full','飽足','bowl'],['hydra','水分','drop'],['clean','貓砂','sand'],['energy','精神','moon']].map(([k,l,i])=>`<div class="need" id="n_${k}">${ICON[i]}<span>${l}</span><i><b></b></i></div>`).join('');}
 let capHTML='',capAt=0;
 function renderHUD(){const c=G.cat;
+  if(momentFor&&(!c||c.beh!==momentFor||G.t-momentT>7))closeMoments();
   $('clock').textContent=fmtT(G.gmin)+(cssW>480?`（${daypart(hour())}）`:'');
   if(!c)return;
   const vals={full:c.nd.full,hydra:c.nd.hydra,clean:clamp(1-G.dirt/6-G.puddles.length*.15,0,1),energy:1-c.m.fatigue};
