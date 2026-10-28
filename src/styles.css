@@ -269,8 +269,8 @@ body{font-size:15.5px}
 
 /* tutorial: dim layer with a hole (clicks pass through the hole), ring, hint card */
 .tut{position:absolute;inset:0;z-index:4;pointer-events:none}
-.tut .tdim{position:absolute;inset:0;background:rgba(28,20,14,.62);pointer-events:auto;will-change:transform;transform:translateZ(0)}
-.tut .tring{position:absolute;left:0;top:0;pointer-events:none;will-change:transform}
+.tut .tdim{position:absolute;inset:0;background:transparent;pointer-events:auto}
+.tut .tring{position:absolute;left:0;top:0;pointer-events:none;border-radius:50%;box-shadow:0 0 0 250vmax rgba(28,20,14,.62);will-change:transform}
 .tut .tring::after{content:"";position:absolute;inset:0;border:2.5px dashed #fff3cf;border-radius:50%;animation:tpulse 1.4s ease-in-out infinite}
 @keyframes tpulse{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.07);opacity:.55}}
 .tut .ttip{position:absolute;pointer-events:auto;will-change:transform;padding:12px 14px;font-family:var(--f-display);font-size:16px;line-height:1.55;--rb:#fffaf0}
