@@ -12,7 +12,7 @@ export const INKC={
 };
 export const hsh=(i,s)=>{const x=Math.sin(i*12.9898+s*78.233)*43758.5453;return x-Math.floor(x);};
 export let inkSeed=0,inkClock=0;
-export function inkTick(dt){if(reduceMotion)return;inkClock+=dt;if(inkClock>1/8){inkClock=0;inkSeed=(inkSeed+1)%997;}}
+export function inkTick(dt){if(reduceMotion)return;inkClock+=dt;if(inkClock>1/3.5){inkClock=0;inkSeed=(inkSeed+1)%997;}}
 export function jit(pts,sd,amp=1){if(amp<=0)return pts;return pts.map((p,i)=>[p[0]+(hsh(i,sd+inkSeed)-.5)*2*amp,p[1]+(hsh(i+97,sd+inkSeed)-.5)*2*amp]);}
 export function spath(c,pts,close=true){c.beginPath();const n=pts.length;
   if(close){for(let i=0;i<n;i++){const a=pts[i],b=pts[(i+1)%n],m=[(a[0]+b[0])/2,(a[1]+b[1])/2];if(i===0)c.moveTo((pts[n-1][0]+a[0])/2,(pts[n-1][1]+a[1])/2);c.quadraticCurveTo(a[0],a[1],m[0],m[1]);}c.closePath();}

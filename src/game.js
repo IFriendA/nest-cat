@@ -812,6 +812,28 @@ function drawBall(){const b=G.ball,s=scaleAt(b.y)*1.2;ctx.fillStyle='rgba(44,39,
   const y=b.y-b.z-10*s;ink(ctx,ellPts(b.x,y,10*s,10*s,16),790,{fill:'rgba(215,95,115,.85)',lw:1.8});
   ctx.strokeStyle='rgba(44,39,35,.55)';ctx.lineWidth=1.1;for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(b.x,y,10*s*.85,(3+i*2.4)*s,b.spin+i*.9,0,Math.PI);ctx.stroke();}
   inkL(ctx,[[b.x+8*s,y+4*s],[b.x+16*s,y+11*s],[b.x+24*s,b.y-1]],791,1.3,.4);}
+/* ---- atmosphere: soft contact shadows, window light with dust, paper grain + vignette ---- */
+function softShadow(x,y,rx,ry,a=.16){const g=ctx.createRadialGradient(x,y,0,x,y,rx);g.addColorStop(0,`rgba(70,45,30,${a})`);g.addColorStop(1,'rgba(70,45,30,0)');ctx.save();ctx.translate(x,y);ctx.scale(1,ry/rx);ctx.translate(-x,-y);ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,rx,0,TAU);ctx.fill();ctx.restore();}
+function drawShadows(){const L=G.L;softShadow(L.bed.x,L.bed.y+L.bed.ry*.55,L.bed.rx*1.15,L.bed.ry*.9);softShadow(L.box.x,L.box.y+2,L.box.w*.68,14);softShadow(L.litter.x,L.litter.y+2,L.litter.w*.62,12);
+  softShadow(L.scr.x,L.scr.y+4,L.scr.w*.55,10);softShadow(L.food.x,L.food.y+2,30,7,.2);softShadow(L.water.x,L.water.y+2,30,7,.2);}
+const dust=Array.from({length:18},(_,i)=>({u:Math.random(),v:Math.random(),s:.6+Math.random()*1.4,ph:Math.random()*TAU}));
+function drawSunbeam(dt){const d=daylight();if(d<.25)return;const L=G.L,w=L.win,a=(d-.25)/.75;
+  const top=[[w.x-w.r*.8,w.y-w.r*.4],[w.x+w.r*.8,w.y+w.r*.5]],fx=w.x-(PORTRAIT?W*.12:W*.18),fy=PORTRAIT?FT+(FB-FT)*.55:FB-40,spread=PORTRAIT?W*.34:W*.22;
+  const poly=[top[0],top[1],[fx+spread,fy+20],[fx-spread*.6,fy]];
+  ctx.save();ctx.globalCompositeOperation='lighter';const g=ctx.createLinearGradient(w.x,w.y,fx,fy);g.addColorStop(0,`rgba(255,214,150,${.09*a})`);g.addColorStop(1,`rgba(255,214,150,${.02*a})`);
+  ctx.fillStyle=g;ctx.beginPath();poly.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fill();
+  // warm pool of light on the floor
+  const pg=ctx.createRadialGradient(fx+spread*.2,fy+6,0,fx+spread*.2,fy+6,spread*.95);pg.addColorStop(0,`rgba(255,210,140,${.2*a})`);pg.addColorStop(1,'rgba(255,210,140,0)');ctx.fillStyle=pg;ctx.save();ctx.translate(fx+spread*.2,fy+6);ctx.scale(1,.28);ctx.beginPath();ctx.arc(0,0,spread*.95,0,TAU);ctx.restore();ctx.fill();
+  // dust floating in the beam
+  ctx.fillStyle=`rgba(255,240,210,${.55*a})`;for(const p of dust){p.v-=dt*.012*p.s;if(p.v<0)p.v+=1;const t=p.v,x0=lerp(lerp(top[0][0],top[1][0],p.u),lerp(fx-spread*.6,fx+spread,p.u),t)+Math.sin(G.t*.6+p.ph)*6,y0=lerp(lerp(top[0][1],top[1][1],p.u),fy,t);ctx.beginPath();ctx.arc(x0,y0,p.s*1.1,0,TAU);ctx.fill();}
+  ctx.restore();}
+let paperCv=null,paperKey='';
+function paperTex(){const w=cv.width,h=cv.height,key=w+'x'+h;if(paperKey===key)return paperCv;paperKey=key;paperCv=document.createElement('canvas');paperCv.width=w;paperCv.height=h;const p=paperCv.getContext('2d');
+  p.fillStyle='#fff';p.fillRect(0,0,w,h);
+  for(let i=0;i<70;i++){const x=Math.random()*w,y=Math.random()*h,r=(40+Math.random()*160)*DPR,g=p.createRadialGradient(x,y,0,x,y,r),c=Math.random()<.5?'200,170,130':'235,215,190';g.addColorStop(0,`rgba(${c},.10)`);g.addColorStop(1,`rgba(${c},0)`);p.fillStyle=g;p.fillRect(x-r,y-r,r*2,r*2);}
+  const id=p.getImageData(0,0,w,h),d=id.data;for(let i=0;i<d.length;i+=4){const n=(Math.random()-.5)*16;d[i]+=n;d[i+1]+=n;d[i+2]+=n;}p.putImageData(id,0,0);
+  const vg=p.createRadialGradient(w/2,h*.45,Math.min(w,h)*.35,w/2,h*.5,Math.max(w,h)*.75);vg.addColorStop(0,'rgba(120,80,50,0)');vg.addColorStop(1,'rgba(120,80,50,.22)');p.fillStyle=vg;p.fillRect(0,0,w,h);return paperCv;}
+function drawPaper(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation='multiply';ctx.drawImage(paperTex(),0,0);ctx.restore();}
 function drawPuddles(){for(const p of G.puddles){const s=p.s||1;ink(ctx,ellPts(p.x,p.y,18*s,5.5*s,18),800+Math.round(p.x)%50,{fill:'rgba(238,212,95,.6)',lw:1.2,amp:.6});ctx.fillStyle='rgba(255,255,255,.6)';ctx.beginPath();ctx.ellipse(p.x-6*s,p.y-1.5*s,4*s,1.2*s,0,0,TAU);ctx.fill();}}
 function drawBug(){const b=G.bug;if(!b)return;if(b.mode==='land'){ctx.fillStyle='rgba(44,39,35,.15)';ctx.beginPath();ctx.ellipse(b.x,b.y+2,4,1.5,0,0,TAU);ctx.fill();}
   ctx.fillStyle=INK;ctx.beginPath();ctx.ellipse(b.x,b.y,3.2,2.4,0,0,TAU);ctx.fill();const fl=b.mode==='land'?.2:Math.abs(Math.sin(G.t*60));
@@ -1077,7 +1099,7 @@ function step(dt){const ptr=G.ptr;touchFx(dt);
   c.update(dt,dt*G.speed);}
 function render(dt){
   inkTick(dt);ctx.setTransform(DPR*cssW/W,0,0,DPR*cssH/H,0,0);drawBgInk();
-  drawWindow();drawPuddles();
+  drawWindow();drawShadows();drawPuddles();
   const L=G.L,items=[{y:L.bed.y-L.bed.ry,f:drawBedBack},{y:L.bed.y+L.bed.ry*.7,f:drawBedFront},{y:L.box.y-L.box.d-1,f:drawBoxBack},{y:L.box.y,f:drawBoxFront},
     {y:L.litter.y-L.litter.d,f:drawLitterBack},{y:L.litter.y,f:drawLitterFront},{y:L.scr.y-20,f:drawScratcher},{y:L.food.y,f:()=>drawBowl(L.food,'food')},{y:L.water.y,f:()=>drawBowl(L.water,'water')},{y:G.ball.y,f:drawBall}];
   if(G.cat&&G.adopted&&!G.revoked)items.push({y:G.cat.held?H+1:G.cat.y,f:()=>{G.cat.draw();ctx.setTransform(DPR*cssW/W,0,0,DPR*cssH/H,0,0);}});
@@ -1085,7 +1107,7 @@ function render(dt){
   if(G.ftreat&&G.adopted)items.push({y:G.ftreat.y,f:()=>{const t=G.ftreat;ctx.fillStyle='rgba(60,30,20,.2)';ctx.beginPath();ctx.ellipse(t.x,t.y,12,3.5,0,0,TAU);ctx.fill();drawTreatIcon(t.x-3,t.y-6,.9);}});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.f());
   if(G.bug&&G.bug.mode!=='land')drawBug();
-  drawLighting();drawFx(dt);snapLoupe();drawTouchFx(dt);drawAnim(dt);drawDoor();drawCursor();drawLoupe(dt);}
+  drawLighting();drawSunbeam(dt);drawPaper();drawFx(dt);snapLoupe();drawTouchFx(dt);drawAnim(dt);drawDoor();drawCursor();drawLoupe(dt);}
 
 /* ================= input ================= */
 function toLocal(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
