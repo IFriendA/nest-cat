@@ -537,6 +537,7 @@ class Cat{
     if(m.annoy>.2&&this.beh!=='petted'){tp.earUp=Math.min(tp.earUp,.45-1.2*m.annoy);tp.tailAmp=Math.max(tp.tailAmp,.1+.3*m.annoy);tp.tailFreq=Math.max(tp.tailFreq,2+2*m.annoy);}
     const k=this.attn.kind;if(k==='toy'||k==='bug'||k==='ball')tp.pupil=Math.max(tp.pupil,.55+.45*m.play);
     if(this.hd<4&&G.ptr.in&&G.tool==='hand'&&this.beh!=='petted')tp.crouch+=(1-p.bold)*(1-this.te())*.25;
+    if(this.chinOn){tp.headUp+=.6;tp.eyeOpen=Math.min(tp.eyeOpen,.28);tp.purr=Math.max(tp.purr,.85);tp.earUp+=.25;tp.crouch=0;}
     if(G.care.warn>0){tp.earUp-=.45;tp.tailUp-=.5;tp.eyeOpen=Math.min(tp.eyeOpen,.75);tp.headUp-=.3;}
     tp.headUp+=.15*(1-p.soc)*(1-tp.crouch);tp.tailAmp*=(.6+.7*p.energy);tp.headTilt*=(.6+.8*p.play);}
 
@@ -909,7 +910,7 @@ function drawLoupe(dt){const ptr=G.ptr,c=G.cat;LP.a=clamp(LP.a+(LP.on?dt*7:-dt*6
    Each row: when(cat) → up to 3 choices. A choice is [label, react(cat) → result line]. Add moments by adding rows. */
 const MOMENTS=[
  {when:c=>c.beh==='nap',opts:[
-  ['偷摸肉墊',c=>{if(c.q.tol<.35){c.kick({earUp:-3});return '牠把腳收進身體底下，皺了皺眉，繼續睡。';}c.kick({earUp:2,headTilt:2});c.m.trust=Math.min(1,c.m.trust+.01);return '牠的腳趾張開又縮回去，沒醒，咂咂嘴繼續睡。';}],
+  ['偷摸肉墊',c=>{if(c.q.tol<.35){startAnim('paw',c,{pull:1});return '牠把腳收進身體底下，皺了皺眉，繼續睡。';}startAnim('paw',c);c.m.trust=Math.min(1,c.m.trust+.01);return '牠的腳趾張開又縮回去，沒醒，咂咂嘴繼續睡。';}],
   ['輕摸頭',c=>{if(c.grudge()>.4){c.kick({earUp:-3});return '牠半睜開眼瞪了你一下，又閉上了。';}c.kick({earUp:3});c.remember('petsleep',.25,.3);return '耳朵抖了一下，發出一聲短短的呼嚕。';}],
   ['讓牠睡',c=>{c.m.trust=Math.min(1,c.m.trust+.01);return '你沒有吵牠。牠睡得很沉，肚子一起一伏。';}]]},
  {when:c=>c.beh==='hide',opts:[
@@ -933,7 +934,7 @@ const MOMENTS=[
   ['慢慢眨眼',c=>{if(c.te()>.5){c.slowBlink=1.1;c.m.trust=Math.min(1,c.m.trust+.02);return '牠也慢慢眨了一下眼睛。這是貓在說「我信任你」。';}return '牠盯著你，沒有眨眼。還需要一點時間。';}],
   ['就這樣待著',c=>{c.setBeh('sit');c.m.trust=Math.min(1,c.m.trust+.01);return '牠在你旁邊坐下，尾巴繞住了腳。';}]]},
  {when:c=>true,opts:[
-  ['摸下巴',c=>{if(c.te()<.3){c.kick({earUp:-2});return '牠往後躲了一下。還不夠信任你。';}c.kick({headUp:3});return '牠把頭抬高，把下巴送到你手上。';}],
+  ['摸下巴',c=>{if(c.te()<.3){c.kick({earUp:-2});return '牠往後躲了一下。還不夠信任你。';}startAnim('chin',c);return '牠把頭抬高，瞇起眼睛，把下巴送到你手上。';}],
   ['慢慢眨眼',c=>{if(c.te()>.5){c.slowBlink=1.1;c.m.trust=Math.min(1,c.m.trust+.02);return '牠也慢慢眨了一下眼睛。這是貓在說「我信任你」。';}return '牠看著你，沒有眨眼。';}],
   ['叫牠的名字',c=>{c.kick({earUp:3});if(c.te()>.5&&c.q.soc>.4){c.decideT=0;return '牠「喵」了一聲，朝你走過來。';}return '牠的耳朵動了一下，沒有過來。';}]]},
 ];
@@ -941,8 +942,41 @@ let momentFor=null,momentT=0;
 function openMoments(c){if(!c||c.held||c.inside)return;const row=MOMENTS.find(r=>r.when(c));const box=$('moments');
   box.innerHTML=row.opts.map(([l],i)=>`<button type="button" class="btn" data-i="${i}">${l}</button>`).join('');
   box.style.left=clamp(c.head.x*cssW/W,90,cssW-90)+'px';box.style.top=Math.max(120,c.head.y*cssH/H-36*c.S*cssH/H)+'px';box.hidden=false;momentFor=c.beh;momentT=G.t;
-  box.querySelectorAll('button').forEach(b=>b.onclick=e=>{e.stopPropagation();const [l,fn]=row.opts[+b.dataset.i];const txt=fn(c);closeMoments();G.lastInteract=G.gmin;if(txt){toast(l,txt);log(`你${l}。${txt}`);}});}
+  box.querySelectorAll('button').forEach(b=>b.onclick=e=>{e.stopPropagation();const [l,fn]=row.opts[+b.dataset.i];const txt=fn(c);closeMoments();G.lastInteract=G.gmin;if(txt){log(`你${l}。${txt}`);if(G.anim&&G.anim.t===0)G.anim.after=[l,txt];else toast(l,txt);}});}
 function closeMoments(){const b=$('moments');if(b)b.hidden=true;momentFor=null;}
+/* ---- ghost hand + moment animations ----
+   The hand is never a real hand: a wobbly ink outline over a faint paper wash, fading in and out. */
+const HAND=[[0,-1],[-4,2],[-4.6,14],[-5,25],[-12,26.5],[-19,30],[-24,35],[-22.5,40],[-16,39.5],[-15.5,47],[-14,58],[-8,66],[6,66],[14,58],[17.5,46],[17.5,36],[15,31],[11,29],[7,28.5],[4.6,14],[4,2]];
+function ghostHand(x,y,rot,sc,a){if(a<=0)return;ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.scale(sc,sc);ctx.globalAlpha=a;
+  ctx.fillStyle='rgba(255,252,245,.42)';spath(ctx,HAND);ctx.fill();ctx.strokeStyle=INK;ctx.lineWidth=1.7/sc;ctx.lineJoin='round';spath(ctx,jit(HAND,1500,.7/sc*1.2));ctx.stroke();
+  ctx.globalAlpha=a*.5;ctx.lineWidth=1.2/sc;for(const [x0,y0,x1,y1] of [[5,30,11,33],[9,40,15,41]]){ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();}
+  ctx.restore();ctx.globalAlpha=1;}
+function startAnim(kind,c,opt={}){G.anim={kind,c,t:0,dur:kind==='paw'?2.7:2.5,...opt};if(kind==='chin'){c.setBeh('sit');c.mv=null;c.decideT=3;}}
+const ease=t=>t<0?0:t>1?1:t*t*(3-2*t);
+function drawAnim(dt){const A=G.anim;if(!A)return;A.t+=dt;const t=A.t,c=A.c;
+  if(t>=A.dur||!c){c&&(c.chinOn=false);if(A.after)toast(A.after[0],A.after[1]);G.anim=null;return;}
+  if(A.kind==='chin'){c.chinOn=t>.45&&t<2.05;const k=c.S*(.3+.7*Math.abs(c.face)),cx=c.head.x+c.yaw*9*k,cy=c.head.y+17*c.S;
+    const inK=ease(t/.55),outK=ease((t-2)/.45),sx=cx+c.facing*(26*c.S)*(1-inK)+c.facing*30*c.S*outK,sy=cy+70*c.S*(1-inK)+60*c.S*outK;
+    const rub=t>.55&&t<2?Math.sin((t-.55)*10)*5*c.S:0;
+    if(c.chinOn){ctx.globalAlpha=.5;for(let i=0;i<3;i++)inkL(ctx,[[cx-8*c.S+i*6*c.S+rub*.4,cy+2*c.S],[cx-6*c.S+i*6*c.S+rub*.6,cy+6*c.S]],1520+i,1.1,.3);ctx.globalAlpha=1;}
+    ghostHand(sx+rub,sy+2*c.S,c.facing*-.15,.62*c.S,Math.min(1,t/.3)*(1-outK)*.95);return;}
+  if(A.kind==='paw'){const fade=Math.min(1,t/.25)*(1-ease((t-2.35)/.35)),pw=Math.min(W*.86,400),ph=pw*.72,px=W/2,py=Math.max(FT*.75,ph/2+70),k=pw/320;
+    ctx.globalAlpha=fade*.28;ctx.fillStyle=INK;ctx.fillRect(0,0,W,H);ctx.globalAlpha=fade;
+    const x0=px-pw/2,y0=py-ph/2;ctx.fillStyle='#efe2cd';ctx.fillRect(x0,y0,pw,ph);
+    ctx.save();ctx.beginPath();ctx.rect(x0,y0,pw,ph);ctx.clip();
+    const ic=INKC[c.coatId]||INKC.cream,pull=A.pull?ease((t-.85)/.45)*150*k:0,sp=A.pull?0:ease((t-.8)/.25)*(1-ease((t-1.4)/.35));
+    const fx=px+10*k,fy=py+18*k+pull,toe=ic.dark?'#c98189':'#f0a3ab';
+    ink(ctx,[[fx-46*k,fy+20*k],[x0-30,y0+ph+40],[x0+40*k,y0+ph+60],[fx+30*k,fy+44*k]],1530,{fill:ic.fill,lw:2.2});
+    ink(ctx,ellPts(fx,fy,72*k,60*k,30),1531,{fill:ic.fill,lw:2.4,amp:.8});
+    ink(ctx,[[fx-26*k,fy+30*k],[fx-30*k,fy+8*k],[fx-12*k,fy-6*k],[fx+12*k,fy-6*k],[fx+30*k,fy+8*k],[fx+26*k,fy+30*k],[fx,fy+40*k]],1532,{fill:toe,lw:1.8,amp:.6});
+    const T=[[-44,-22],[-17,-40],[15,-40],[42,-22]];T.forEach(([tx,ty],i)=>{const out=1+sp*.28,ang=(i-1.5)*.12*sp,r=(A.pull?1-ease((t-.85)/.4)*.35:1)*k;
+      const bx=fx+(tx*out)*k*Math.cos(ang)-(ty*out)*k*Math.sin(ang),by=fy+(tx*out)*k*Math.sin(ang)+(ty*out)*k*Math.cos(ang);ink(ctx,ellPts(bx,by,12*r,13.5*r,16),1540+i,{fill:toe,lw:1.7,amp:.5});});
+    if(sp>.5){ctx.globalAlpha=fade*(sp-.5)*1.6;for(let i=0;i<4;i++){const a=-2.4+i*.55;inkL(ctx,[[fx+Math.cos(a)*84*k,fy+Math.sin(a)*72*k],[fx+Math.cos(a)*96*k,fy+Math.sin(a)*82*k]],1550+i,1.6,.3);}ctx.globalAlpha=fade;}
+    // ghost finger comes in from the lower right, touches the big pad, leaves
+    const inK=ease((t-.2)/.55),outK=ease((t-1.55)/.5),tx=fx+6*k,ty=fy+22*k,hx=lerp(px+pw*.55,tx,inK)+(px+pw*.6-tx)*outK,hy=lerp(py+ph*.8,ty,inK)+(py+ph*.85-ty)*outK;
+    ghostHand(hx,hy,-.55,1.25*k,(1-outK)*.95);
+    ctx.restore();ctx.globalAlpha=fade;ink(ctx,box4(x0,y0,x0+pw,y0+ph),1560,{lw:2.4,smooth:false,amp:1});
+    ctx.fillStyle=INK;ctx.font=`700 ${Math.round(14*k+4)}px LXGW WenKai TC, serif`;ctx.textAlign='left';ctx.fillText(A.pull?'……':'（偷偷地）',x0+12,y0+26*k+6);ctx.globalAlpha=1;}}
 function label(x,y,t){ctx.font='700 14px LXGW WenKai TC, serif';const w=ctx.measureText(t).width+18;x=clamp(x,w/2+6,W-w/2-6);
   ctx.globalAlpha=.94;ink(ctx,box4(x-w/2,y-13,x+w/2,y+10),1470,{fill:PAPER,lw:1.4,amp:.5});ctx.fillStyle=INK;ctx.textAlign='center';ctx.fillText(t,x,y+3);ctx.textAlign='left';ctx.globalAlpha=1;}
 function drawCursor(){const ptr=G.ptr;if(!ptr.in||G.door.state==='closed'&&G.tool==='wand')return;
@@ -1017,7 +1051,7 @@ function render(dt){
   if(G.ftreat&&G.adopted)items.push({y:G.ftreat.y,f:()=>{const t=G.ftreat;ctx.fillStyle='rgba(60,30,20,.2)';ctx.beginPath();ctx.ellipse(t.x,t.y,12,3.5,0,0,TAU);ctx.fill();drawTreatIcon(t.x-3,t.y-6,.9);}});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.f());
   if(G.bug&&G.bug.mode!=='land')drawBug();
-  drawLighting();drawFx(dt);snapLoupe();drawTouchFx(dt);drawDoor();drawCursor();drawLoupe(dt);}
+  drawLighting();drawFx(dt);snapLoupe();drawTouchFx(dt);drawAnim(dt);drawDoor();drawCursor();drawLoupe(dt);}
 
 /* ================= input ================= */
 function toLocal(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
