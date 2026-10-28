@@ -17,6 +17,10 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <filter id="rough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2" xChannelSelector="R" yChannelSelector="G"/></filter>
+  <filter id="rough-s" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="1" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+</svg>
 <div class="app">
   <div class="stage" id="stage">
     <canvas id="nest" aria-label="小貓的窩，可以撫摸、抱起、餵食和逗貓"></canvas>
@@ -42,6 +46,7 @@
 
 <div class="scrim" id="scrim" hidden></div>
 <aside class="book" id="book" hidden aria-label="手帳">
+  <div class="grab" aria-hidden="true"></div>
   <div class="bookhd"><h2>手帳</h2><button class="btn" id="bookClose">收起</button></div>
   <div class="tabs" role="tablist">
     <button role="tab" data-tab="grow" aria-selected="true">成長</button>

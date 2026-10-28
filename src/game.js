@@ -10,13 +10,14 @@ let W=1000,H=600,DPR=1,cssW=1,cssH=1,PORTRAIT=false;
 let FT=330,FB=590;
 const floorY=y=>clamp(y,FT+14,FB);
 const scaleAt=y=>0.66+0.48*clamp((y-FT)/(FB-FT),0,1);
+let CATK=1.15; // overall cat size; larger in portrait so it reads on a phone
 
 /* ================= world ================= */
 const G={t:0,gmin:8*60,speed:10,tool:'hand',ptr:{x:-999,y:-999,in:false,down:false,speed:0,stillT:0,lx:null,ly:null,petCat:null,type:'mouse',downT:0,dx:0,dy:0,moved:0,grabBall:false,vx:0,vy:0,target:null},
  toy:{nodes:[],visible:false,speed:0,ax:0,ay:0,x:0,y:0},bug:null,bird:null,ball:{x:500,y:470,vx:0,vy:0,z:0,vz:0,spin:0},
  food:.7,water:.9,dirt:0,puddles:[],treats:3,
  door:{k:0,state:'open',until:0,knocks:[],snack:false,shake:0,paw:0},
- fx:{scratch:null,ripples:[],puffs:[],pours:[],bubbles:[],rake:0},
+ fx:{scratch:null,ripples:[],puffs:[],pours:[],bubbles:[],rake:0,trail:[],floaters:[],dust:[],heartT:0,dustT:0},
  care:{neglect:0,warn:0,streak:0,badToday:false},journal:[],cat:null,revoked:false,ff:false,L:{},lastInteract:-9999,lastDay:1,pokes:[]};
 const hour=()=>((G.gmin/60)%24+24)%24;
 const dayNo=()=>Math.floor(G.gmin/1440)+1;
@@ -113,7 +114,7 @@ class Cat{
   update(dt,gdt){
     const ptr=G.ptr,m=this.m,nd=this.nd;
     this.calcStage();this.updateQ();const p=this.q;
-    this.S=scaleAt(this.y)*1.28*this.size;const S=this.S,U=40*S,head=this.head;
+    this.S=scaleAt(this.y)*1.28*CATK*this.size;const S=this.S,U=40*S,head=this.head;
     /* needs (game time) */
     const kit=this.stage===0;
     nd.full=clamp(nd.full-gdt/(11*60)*(kit?1.25:1)*(this.has('greedy')?1.15:1),0,1);
@@ -135,7 +136,7 @@ class Cat{
     const pet=G.tool==='hand'&&ptr.down&&ptr.petCat===this&&!this.held&&this.hit(ptr.x,ptr.y,1.3)&&!['flee','startle','swat','door'].includes(this.beh);
     const petStart=pet&&!this.petting;this.petting=pet;
     if(pet){this.petRegion=this.region(ptr.x,ptr.y);G.lastInteract=G.gmin;}
-    if(petStart)this.onPetStart();
+    if(petStart){this.onPetStart();buzz(8);}
     if(this.petting&&!this.sleepPetOK){
       const stroke=clamp(ptr.speed/170,.2,1.2),reg=this.petRegion;
       const like=reg==='head'?1.15:reg==='back'?(.55+.6*p.soc):reg==='rear'?(p.energy>.7?.9:.15+.4*p.soc):-.6;
@@ -198,7 +199,7 @@ class Cat{
     this.kick({crouch:3*(1-p.bold),earUp:-4*(1-p.bold)});m.fear+=.06*(1-p.bold);this.aware=1.2;
   }
 
-  pickUp(){const p=this.q;this.held=true;this.heldT=0;this.squirm=0;this.setBeh('held');this.jump=null;this.counts.pick++;G.lastInteract=G.gmin;
+  pickUp(){buzz(18);const p=this.q;this.held=true;this.heldT=0;this.squirm=0;this.setBeh('held');this.jump=null;this.counts.pick++;G.lastInteract=G.gmin;
     const tol=this.stage===0?.8:(p.tol*.6+this.te()*.6-.2);this.heldTol=clamp(tol,0,1)*6+.6;
     if(this.te()<.3){this.m.fear+=.4;}
     this.wasPottySeek=this.bd.pseek||this.pottyPending;}
@@ -575,7 +576,7 @@ class Cat{
     for(let i=0;i<N;i++){const q=i/N;a+=(i?P.tailCurl:0)+P.tailAmp*Math.sin(this.tph-i*.55)*(.25+q)*.5;const tgt=a+(i>N-4?this.flick*Math.sin(G.t*30)*.35*(i-N+4):0);
       this.tailA[i]+=(tgt-this.tailA[i])*Math.min(1,dt*(18-i*1.3));}}
 
-  skeleton(){const P=this.pose,t=G.t,S=this.S||scaleAt(this.y)*1.28*this.size;this.S=S;
+  skeleton(){const P=this.pose,t=G.t,S=this.S||scaleAt(this.y)*1.28*CATK*this.size;this.S=S;
     const crouch=clamp(P.crouch,-.3,1.2),sit=clamp(P.sit,0,1),lie=clamp(P.lie,0,1),arch=clamp(P.arch,0,1.2);
     const run=clamp((this.speed-90)/150,0,1),mov=clamp(this.speed/60,0,1),bob=Math.sin(this.phase*2)*(1+3*run)*mov;
     const L=30*this.legS;
@@ -842,6 +843,45 @@ function drawDoor(){const D=G.door;if(D.k<=0)return;const k=1-Math.pow(1-D.k,3),
     ctx.fillStyle=INK;ctx.fillText(`${G.cat?G.cat.name:''}把門關上了`,W/2,H*.42);
     ctx.font=`500 ${Math.round(Math.min(15,W/42))}px Noto Sans TC, sans-serif`;ctx.fillStyle='rgba(44,39,35,.8)';ctx.fillText(G.tool==='treat'?'點門口，放一個零食':'點門會敲門，敲太多次牠會更生氣',W/2,H*.42+22);ctx.textAlign='left';}}
 function drawTreatIcon(x,y,s){ctx.save();ctx.translate(x,y);ctx.scale(s,s);ink(ctx,ellPts(0,0,11,6,14),1100,{fill:'rgba(236,160,90,.95)',lw:1.4,amp:.4});ink(ctx,[[9,0],[17,-6],[17,6]],1101,{fill:'rgba(236,160,90,.95)',lw:1.4,amp:.3,smooth:false});ctx.fillStyle=INK;ctx.beginPath();ctx.arc(-5,-1.5,1.4,0,TAU);ctx.fill();ctx.restore();}
+/* ---- touch feedback: make every touch visibly do something ---- */
+function buzz(p){try{if(G.ptr.type!=='mouse'&&navigator.vibrate)navigator.vibrate(p);}catch(_){}}
+const REG_TXT={head:'摸頭',back:'摸背',rear:'摸屁股',tail:'摸尾巴'};
+function touchFx(dt){const F=G.fx,ptr=G.ptr,c=G.cat;
+  for(const t of F.trail)t.a-=dt*1.6;while(F.trail.length&&F.trail[0].a<=0)F.trail.shift();
+  if(!c||G.ff)return;
+  if(c.petting){const l=F.trail[F.trail.length-1];if(!l||Math.hypot(l.x-ptr.x,l.y-ptr.y)>3)F.trail.push({x:ptr.x,y:ptr.y,a:1});if(F.trail.length>40)F.trail.shift();
+    const m=c.m,happy=m.petBudget>0&&m.annoy<.35&&!c.sleepPetOK,cross=m.annoy>.4;F.heartT-=dt;
+    if(F.heartT<=0){F.heartT=happy?.32:cross?.45:.6;const hx=c.head.x+rnd(-14,14)*c.S,hy=c.head.y-24*c.S;
+      if(happy)F.floaters.push({k:'heart',x:hx,y:hy,vx:rnd(-12,12),t:0,life:1.3,s:rnd(.8,1.15)});
+      else if(cross){F.floaters.push({k:'anger',x:c.head.x+c.facing*18*c.S,y:c.head.y-30*c.S,vx:0,t:0,life:.9,s:1});buzz(12);}
+      else if(c.sleepPetOK)F.floaters.push({k:'z',x:hx,y:hy,vx:6,t:0,life:1.6,s:1});}
+    if(happy&&Math.random()<dt*1.2)buzz(6);}
+  else F.heartT=0;
+  if(ptr.down&&G.tool==='broom'&&ptr.speed>80){F.dustT-=dt;if(F.dustT<=0){F.dustT=.05;F.dust.push({x:ptr.x+rnd(-14,14),y:ptr.y+rnd(0,8),vx:rnd(-30,30),vy:rnd(-40,-10),t:0});}}}
+function heartPts(x,y,s){const p=[];for(let i=0;i<24;i++){const a=i/24*TAU,hx=16*Math.sin(a)**3,hy=-(13*Math.cos(a)-5*Math.cos(2*a)-2*Math.cos(3*a)-Math.cos(4*a));p.push([x+hx*s*.55,y+hy*s*.55]);}return p;}
+function drawTouchFx(dt){const F=G.fx,ptr=G.ptr,c=G.cat;
+  if(F.trail.length>2){for(let i=1;i<F.trail.length;i++){const a=F.trail[i-1],b=F.trail[i];ctx.globalAlpha=Math.max(0,b.a)*.5;inkL(ctx,[[a.x,a.y],[b.x,b.y]],1400+i,3.2,.5);}ctx.globalAlpha=1;}
+  for(let i=F.floaters.length-1;i>=0;i--){const f=F.floaters[i];f.t+=dt;if(f.t>f.life){F.floaters.splice(i,1);continue;}const k=f.t/f.life,x=f.x+f.vx*f.t,y=f.y-f.t*(f.k==='anger'?6:38);
+    ctx.globalAlpha=Math.min(1,(1-k)*2.2,f.t*8);const pop=f.s*(.6+Math.min(1,f.t*6)*.4);
+    if(f.k==='heart')ink(ctx,heartPts(x,y,pop),1420+i%7,{fill:'rgba(232,120,136,.92)',lw:1.6,amp:.4});
+    else if(f.k==='anger'){ctx.save();ctx.translate(x,y);ctx.scale(pop,pop);for(let q=0;q<4;q++){ctx.rotate(Math.PI/2);inkL(ctx,[[3,-3],[9,-3],[9,-9]],1440+q,2.4,.4);}ctx.restore();}
+    else{ctx.fillStyle=INK;ctx.font='700 16px LXGW WenKai TC, serif';ctx.fillText('z',x,y);}}
+  ctx.globalAlpha=1;
+  for(let i=F.dust.length-1;i>=0;i--){const d=F.dust[i];d.t+=dt;if(d.t>.6){F.dust.splice(i,1);continue;}ctx.globalAlpha=(1-d.t/.6)*.6;ctx.fillStyle='#b59a78';ctx.beginPath();ctx.arc(d.x+d.vx*d.t,d.y+d.vy*d.t,2+d.t*5,0,TAU);ctx.fill();}
+  ctx.globalAlpha=1;
+  if(!ptr.in||!ptr.down||ptr.type==='mouse'||G.tool==='wand')return;
+  // finger halo: shows exactly where the touch landed, since the finger hides the spot
+  const pet=c&&c.petting;ctx.globalAlpha=.85;
+  inkL(ctx,ellPts(ptr.x,ptr.y,pet?30:24,pet?30:24,20).concat([[ptr.x+(pet?30:24),ptr.y]]),1460,1.8,.8);
+  ctx.globalAlpha=.16;ctx.fillStyle=pet?'#e87888':'#3d7564';ctx.beginPath();ctx.arc(ptr.x,ptr.y,pet?30:24,0,TAU);ctx.fill();ctx.globalAlpha=1;
+  // long-press ring: "hold to pick up"
+  if(G.tool==='hand'&&ptr.petCat===c&&c&&!c.held&&ptr.moved<8&&ptr.downT>.12&&ptr.downT<.6){const k=(ptr.downT-.12)/.48;
+    ctx.strokeStyle='#3d7564';ctx.lineWidth=4;ctx.lineCap='round';ctx.beginPath();ctx.arc(ptr.x,ptr.y,38,-Math.PI/2,-Math.PI/2+TAU*k);ctx.stroke();
+    label(ptr.x,ptr.y-56,'按住抱起');}
+  else if(pet&&c.petRegion)label(ptr.x,ptr.y-52,REG_TXT[c.petRegion]+(c.m.annoy>.4?'…牠不太高興':''));
+  else if(G.tool==='broom')label(ptr.x,ptr.y-100,'來回擦');}
+function label(x,y,t){ctx.font='700 14px LXGW WenKai TC, serif';const w=ctx.measureText(t).width+18;x=clamp(x,w/2+6,W-w/2-6);
+  ctx.globalAlpha=.94;ink(ctx,box4(x-w/2,y-13,x+w/2,y+10),1470,{fill:PAPER,lw:1.4,amp:.5});ctx.fillStyle=INK;ctx.textAlign='center';ctx.fillText(t,x,y+3);ctx.textAlign='left';ctx.globalAlpha=1;}
 function drawCursor(){const ptr=G.ptr;if(!ptr.in||G.door.state==='closed'&&G.tool==='wand')return;
   if(G.tool==='wand'){drawToy();return;}
   if(G.tool==='broom'){ctx.save();ctx.translate(ptr.x,ptr.y);ctx.rotate(-.5+(ptr.down?Math.sin(G.t*16)*.3:0));inkL(ctx,[[0,-80],[0,-16]],1110,4,.4);ctx.strokeStyle='#a87756';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-78);ctx.lineTo(0,-18);ctx.stroke();
@@ -880,7 +920,7 @@ function drawPortraitInk(canvas,coatId,stage=0){const c=canvas.getContext('2d'),
 
 /* ================= loop ================= */
 function resize(){const r=stage.getBoundingClientRect();cssW=Math.max(1,r.width);cssH=Math.max(1,r.height);DPR=Math.min(2,window.devicePixelRatio||1);
-  PORTRAIT=cssH>cssW*1.05;
+  PORTRAIT=cssH>cssW*1.05;CATK=PORTRAIT?1.38:1.15;
   if(PORTRAIT){W=470;H=Math.round(470*cssH/cssW);}else{H=600;W=Math.max(560,Math.round(600*cssW/cssH));}
   const k=W/cssW,dock=$('tools')?$('tools').getBoundingClientRect().height:60;
   FT=PORTRAIT?Math.round(Math.max(320,H*.3)):330;
@@ -893,7 +933,7 @@ function frame(now){const dt=Math.min(1/30,Math.max(0,(now-last)/1000));last=now
   uiT-=dt;if(uiT<=0){uiT=.15;renderHUD();if(uiDirty){renderPanels();uiDirty=false;}renderDev();}
   saveT-=dt;if(saveT<=0){saveT=5;save();}
   requestAnimationFrame(frame);}
-function step(dt){const ptr=G.ptr;
+function step(dt){const ptr=G.ptr;touchFx(dt);
   if(ptr.lx!==null&&ptr.in){const v=Math.hypot(ptr.x-ptr.lx,ptr.y-ptr.ly)/Math.max(dt,1e-3);ptr.speed=lerp(ptr.speed,v,.3);}else ptr.speed=lerp(ptr.speed,0,.3);
   ptr.lx=ptr.x;ptr.ly=ptr.y;ptr.stillT=ptr.speed<55?ptr.stillT+dt:0;
   const c=G.cat;
@@ -914,7 +954,7 @@ function render(dt){
   if(G.ftreat&&G.adopted)items.push({y:G.ftreat.y,f:()=>{const t=G.ftreat;ctx.fillStyle='rgba(60,30,20,.2)';ctx.beginPath();ctx.ellipse(t.x,t.y,12,3.5,0,0,TAU);ctx.fill();drawTreatIcon(t.x-3,t.y-6,.9);}});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.f());
   if(G.bug&&G.bug.mode!=='land')drawBug();
-  drawLighting();drawFx(dt);drawDoor();drawCursor();}
+  drawLighting();drawFx(dt);drawTouchFx(dt);drawDoor();drawCursor();}
 
 /* ================= input ================= */
 function toLocal(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
@@ -928,7 +968,7 @@ cv.addEventListener('pointerdown',e=>{if(!G.adopted||G.revoked)return;const q=to
     let tx=q.x,ty=floorY(q.y);if(c&&c.hit(q.x,q.y,1.4)){tx=clamp(c.head.x+c.facing*8*c.S,45,W-45);ty=floorY(c.y+3);}
     G.treats--;G.ftreat={x:tx,y:ty};c.decideT=0;log('你放了一個零食。');return;}
   if(G.tool==='hand'&&c&&c.hit(q.x,q.y,1.25)){p.petCat=c;
-    if(c.m.annoy>.5){G.pokes=G.pokes.filter(t=>G.t-t<3);G.pokes.push(G.t);if(G.pokes.length>=3){G.pokes=[];screenSwipe();c.m.annoy=Math.min(1,c.m.annoy+.25);c.remember('overpet',-.5,.6);log(`${c.name}受夠了，隔著螢幕拍了你一掌。`,true);p.petCat=null;}}
+    if(c.m.annoy>.5){G.pokes=G.pokes.filter(t=>G.t-t<3);G.pokes.push(G.t);if(G.pokes.length>=3){G.pokes=[];buzz([30,40,30]);screenSwipe();c.m.annoy=Math.min(1,c.m.annoy+.25);c.remember('overpet',-.5,.6);log(`${c.name}受夠了，隔著螢幕拍了你一掌。`,true);p.petCat=null;}}
     return;}
   const b=G.ball;if(Math.hypot(q.x-b.x,q.y-(b.y-12))<26){p.grabBall=true;return;}
   if(inRect(q.x,q.y,L.food.x,L.food.y-12,34,26)){G.food=1;G.fx.pours.push({x:L.food.x,y:L.food.y-16,t:0});c.hear(L.food.x,L.food.y,.3);c.lastFill=G.t;c.feedHours[Math.floor(hour())]++;c.counts.feeds++;c.remember('fed',.3,.4);c.m.trust=Math.min(1,c.m.trust+.02);log('你倒了一碗飼料。');G.lastInteract=G.gmin;return;}
@@ -960,7 +1000,7 @@ function buildTools(){$('tools').innerHTML=[['hand','摸摸'],['treat','零食']
   $('needs').innerHTML=[['full','飽足','bowl'],['hydra','水分','drop'],['clean','貓砂','sand'],['energy','精神','moon']].map(([k,l,i])=>`<div class="need" id="n_${k}">${ICON[i]}<span>${l}</span><i><b></b></i></div>`).join('');}
 let capHTML='',capAt=0;
 function renderHUD(){const c=G.cat;
-  $('clock').textContent=fmtT(G.gmin)+`（${daypart(hour())}）`;
+  $('clock').textContent=fmtT(G.gmin)+(cssW>480?`（${daypart(hour())}）`:'');
   if(!c)return;
   const vals={full:c.nd.full,hydra:c.nd.hydra,clean:clamp(1-G.dirt/6-G.puddles.length*.15,0,1),energy:1-c.m.fatigue};
   for(const k in vals){const el=$('n_'+k);if(!el)continue;el.querySelector('b').style.width=Math.round(vals[k]*100)+'%';el.classList.toggle('low',vals[k]<.35&&vals[k]>=.12);el.classList.toggle('crit',vals[k]<.12);}
@@ -1125,5 +1165,6 @@ new ResizeObserver(resize).observe(stage);
 
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save();});
 document.fonts&&document.fonts.ready.then(()=>{bgDirty=true;});
+if(DEV){window.__G=G;window.__W=()=>W;}
 requestAnimationFrame(frame);
 

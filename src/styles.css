@@ -59,7 +59,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .tool{position:relative;white-space:nowrap}
 .overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(36,24,18,.5);backdrop-filter:blur(3px);padding:calc(var(--safe-t) + 16px) 16px calc(var(--safe-b) + 16px);overflow:auto}
 /* notebook: right drawer on wide screens, bottom sheet on phones */
-.book{position:fixed;z-index:30;background:var(--panel);display:grid;grid-template-rows:auto auto minmax(0,1fr);box-shadow:-8px 0 30px rgba(0,0,0,.18);border-left:1.6px solid var(--hud-line);
+.book{position:fixed;z-index:30;background:var(--panel);display:grid;grid-template-rows:auto auto auto minmax(0,1fr);box-shadow:-8px 0 30px rgba(0,0,0,.18);border-left:1.6px solid var(--hud-line);
   top:0;right:0;bottom:0;width:min(400px,100%);padding-top:var(--safe-t);padding-right:var(--safe-r);animation:bin .25s ease-out}
 @keyframes bin{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
 .bookhd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px}
@@ -83,8 +83,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .scrim{position:fixed;inset:0;z-index:29;background:rgba(30,20,15,.28)}
 @media (max-width:720px),(orientation:portrait){
   .book{top:auto;left:0;right:0;width:auto;height:min(82%,680px);border-left:0;border-top:1.6px solid var(--hud-line);border-radius:22px 22px 0 0;padding-right:0;padding-top:4px;animation:bup .28s ease-out}
-  .book::before{content:"";justify-self:center;width:44px;height:5px;border-radius:3px;background:var(--line);margin-top:6px}
-  .book{grid-template-rows:auto auto auto minmax(0,1fr)}
+
   @keyframes bup{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 }
 @media (max-width:560px){
@@ -197,3 +196,57 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 }
 
 @media (prefers-reduced-motion: reduce){.gbody{scroll-behavior:auto}.toast{animation:none}.need i b{transition:none}}
+
+/* ================= hand-drawn interface =================
+   Every panel, chip and button gets an ink outline drawn on a ::before layer
+   that is roughened by the #rough SVG filter; text stays crisp on top. */
+:root{--ink-line:#2c2723;--f-body:"LXGW WenKai TC","Kaiti TC","STKaiti","BiauKai","Noto Sans TC",serif}
+body{font-size:15.5px}
+.paper,.btn,.tool,.tabs button,.seg button,.book,.sheet,.kit,.toast,.banner,.gbox,.trait,.menu{
+  isolation:isolate;background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+.btn,.tool,.tabs button,.seg button,.sheet,.kit,.toast,.gbox,.trait,.who,.clock,.ibtn{position:relative}
+.who{flex:none;max-width:46%}
+.clock{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.paper::before,.btn::before,.tool::before,.tabs button::before,.seg button::before,.book::before,.sheet::before,.kit::before,.toast::before,.banner::before,.gbox::before,.trait::before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:var(--rb,var(--panel));border:var(--rw,1.8px) solid var(--rc,var(--ink-line));
+  border-radius:var(--rr,13px 10px 14px 9px / 10px 14px 9px 13px);filter:url(#rough);
+  box-shadow:var(--rs,2px 3px 0 rgba(44,39,35,.16))}
+.paper{--rb:rgba(255,250,242,.94)}
+.tool{--rb:transparent;--rw:0px;--rs:none}
+.tool[aria-pressed="true"]{--rb:#f3d58a;--rw:1.8px;color:var(--ink)!important;background:transparent!important}
+.tool svg,.ibtn svg,.need svg{filter:url(#rough-s)}
+.btn{--rr:9px 12px 8px 11px / 11px 8px 12px 9px;--rs:1.5px 2px 0 rgba(44,39,35,.18);font-weight:700}
+.btn.primary{--rb:var(--accent);color:#fff}
+.btn:hover{--rb:#fff3dc}.btn.primary:hover{--rb:#356a5a}
+.btn:active,.tool:active,.ibtn:active{transform:translate(1px,2px)}
+.btn:active::before,.ibtn:active::before{--rs:0 0 0 transparent}
+.tabs{border-bottom:0;background-image:linear-gradient(90deg,var(--ink-line) 50%,transparent 50%);background-size:10px 1.5px;background-repeat:repeat-x;background-position:0 100%}
+.tabs button{--rw:1.4px;--rs:none;--rb:transparent;color:var(--ink)!important;font-weight:700}
+.tabs button[aria-selected="true"]{--rb:#f3d58a}
+.seg button{--rw:1.4px;--rs:none;--rb:transparent}
+.seg button[aria-pressed="true"]{--rb:#f3d58a;color:var(--ink)!important}
+.book{--rr:22px 18px 0 0 / 18px 22px 0 0;--rs:0 -6px 24px rgba(44,39,35,.18);--rw:2px}
+@media (min-width:721px) and (orientation:landscape){.book{--rr:20px 0 0 20px / 24px 0 0 18px;--rs:-6px 0 24px rgba(44,39,35,.18)}}
+.book::before{content:""!important}
+.book>.grab{justify-self:center;width:44px;height:5px;border-radius:3px;background:var(--ink-line);opacity:.25;margin-top:8px}
+.sheet{--rr:20px 16px 22px 15px / 16px 22px 15px 20px;--rw:2px;--rs:4px 6px 0 rgba(44,39,35,.25)}
+.kit{--rb:transparent;--rw:1.4px;--rs:none}.kit:hover{--rb:#fff3dc}
+.toast{--rb:var(--panel)}
+.banner{--rb:var(--warn);--rc:rgba(44,39,35,.7)}.banner.crit{--rb:var(--danger)}.banner.ok{--rb:var(--good)}
+.trait{--rw:1.3px;--rs:none;--rb:transparent}.trait:not(.on){--rc:#b9aa98}.trait.on{--rb:var(--accent-soft)}
+.gbox{--rr:20px 16px 22px 15px / 16px 22px 15px 20px;--rw:2px}
+/* progress bars: inked tube, crayon fill */
+.need i,.lifebar i{height:9px;border:1.5px solid var(--ink-line);border-radius:6px 4px 7px 3px;background:#fff6e8;filter:url(#rough-s)}
+.need i b,.lifebar i b{border-radius:0;background-image:repeating-linear-gradient(-55deg,rgba(255,255,255,.28) 0 3px,transparent 3px 7px)}
+.need i b{background-color:var(--good)}.need.low i b{background-color:var(--warn)}.need.crit i b{background-color:var(--danger)}
+.lifebar i b{background-color:var(--accent)}
+.tasks .ck{border:1.6px solid var(--ink-line)!important;border-radius:48% 52% 45% 55%!important;filter:url(#rough-s)}
+.whotxt b,.clock,.tool,.ibtn,.caption,.toast,.banner{font-family:var(--f-display)}
+.clock{font-size:14px}
+.tool{font-size:14px}
+.ibtn{font-size:12.5px;font-weight:700}
+.who canvas{border:1.5px solid var(--ink-line);filter:none;background:#f3e3c8}
+@media (min-width:721px) and (orientation:landscape){.book>.grab{display:none}}
+.tabs{padding-bottom:14px}
+@media (max-width:560px){.toasts{top:auto;bottom:calc(var(--safe-b) + 108px)}}
