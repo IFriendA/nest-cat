@@ -1363,6 +1363,7 @@ document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{G.speed=+b.da
 $('ffBtn').onclick=()=>fastForward(3);
 $('growBtn').onclick=()=>{const c=G.cat;if(!c||c.stage>=3)return;c.born=G.gmin-STAGES[c.stage+1].from*1440-1;uiDirty=true;};
 $('helpBtn').onclick=()=>{closeMenu();openGuide();};
+$('tutBtn').onclick=()=>{closeMenu();startTut();};
 /* ---- notebook (drawer on wide screens, bottom sheet on phones) & menu ---- */
 let bookTab='rel';
 function setTab(t){bookTab=t;document.querySelectorAll('#book [role=tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));document.querySelectorAll('#book .tabp').forEach(p=>p.hidden=p.dataset.p!==t);if(t==='dev')syncDevSliders();uiDirty=true;}
@@ -1382,7 +1383,7 @@ $('ffBtn').addEventListener('click',closeMenu);
 {let sy=null;const bk=$('book');bk.addEventListener('touchstart',e=>{const t=e.target.closest('.bookhd,.tabs');sy=t||e.target===bk?e.touches[0].clientY:null;},{passive:true});
  bk.addEventListener('touchend',e=>{if(sy!=null&&e.changedTouches[0].clientY-sy>70)closeBook();sy=null;},{passive:true});}
 resize();buildTools();buildDev();
-if(!load())showAdopt();else{syncDevSliders();toast('回到窩裡',`${G.cat.name}在家等你。`);}
+if(!load())showAdopt();else{syncDevSliders();toast('回到窩裡',`${G.cat.name}在家等你。`);let td=false;try{td=!!localStorage.getItem('nest-tut-done');}catch(_){}if(!td&&!G.revoked)setTimeout(startTut,900);}
 uiDirty=true;
 new ResizeObserver(resize).observe(stage);
 
