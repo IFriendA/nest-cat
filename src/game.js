@@ -982,6 +982,14 @@ function relHit(id){const R=G.rel;if(!R||R.done[id]||G.revoked)return;const m=RE
 function relUp(s,soon){log(`你們的關係：${REL[s-1].n} → ${REL[s].n}`,true);if(G.ff){G.relQ=s;return;}
   const ov=$('overlay');ov.innerHTML=`<div class="sheet relup"><p class="sub">你們的關係</p><h2>${REL[s-1].n} → ${REL[s].n}</h2><p>${soon?'下一段關係還在路上，之後的版本會開放。':REL[s].d}</p>${!soon&&REL[s].un?`<div class="note">新解鎖：${REL[s].un}</div>`:''}<button type="button" class="btn primary" id="relOk">好</button></div>`;
   ov.hidden=false;$('relOk').onclick=()=>{ov.hidden=true;};}
+/* on-screen guidance: the next "first time", and in the first stage a ring around what to tap */
+function relNext(){const R=G.rel;if(!R)return null;const cur=REL[R.stage];if(cur.soon)return null;const m=cur.ms.find(x=>!R.done[x[0]]);return m;}
+let goalTxt='';
+function renderGoal(){const el=$('goal');if(!el)return;const m=G.adopted&&!G.revoked?relNext():null;let t='';
+  if(m){const st=relStage();if(st===0){t=m[0]==='clean'&&G.dirt<=0&&!G.puddles.length?'下一步：等牠用過貓砂盆，再用「清潔」擦一擦':`下一步：${m[1].replace('第一次','')}（${m[2]}）`;}else t=`${REL[st].n}｜${m[2]}`;}
+  if(t!==goalTxt){goalTxt=t;el.textContent=t;el.hidden=!t;}}
+function drawGoalFx(){const m=relStage()===0?relNext():null;if(!m||!G.adopted)return;const L=G.L,tg=m[0]==='feed'?[L.food.x,L.food.y-8,40]:m[0]==='water'?[L.water.x,L.water.y-8,40]:[L.litter.x,L.litter.y-L.litter.d/2,L.litter.w*.62];
+  const k=1+Math.sin(G.t*3)*.08;ctx.globalAlpha=.55+Math.sin(G.t*3)*.25;ctx.setLineDash([6,6]);inkL(ctx,ellPts(tg[0],tg[1],tg[2]*k,tg[2]*.55*k,28).concat([[tg[0]+tg[2]*k,tg[1]]]),1600,2,.6);ctx.setLineDash([]);ctx.globalAlpha=1;}
 function renderRel(){const R=G.rel,box=$('relBox');if(!R||!box)return;const cur=REL[R.stage];
   box.innerHTML=`<div class="relladder">${REL.map((r,i)=>`<span class="${i<R.stage?'past':i===R.stage?'cur':''}">${r.n}</span>`).join('<i>·</i>')}</div>
   <div class="ph"><h3>現在：${cur.n}</h3></div><p class="note">${cur.d}</p>
@@ -1134,7 +1142,7 @@ function render(dt){
   if(G.ftreat&&G.adopted)items.push({y:G.ftreat.y,f:()=>{const t=G.ftreat;ctx.fillStyle='rgba(60,30,20,.2)';ctx.beginPath();ctx.ellipse(t.x,t.y,12,3.5,0,0,TAU);ctx.fill();drawTreatIcon(t.x-3,t.y-6,.9);}});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.f());
   if(G.bug&&G.bug.mode!=='land')drawBug();
-  drawLighting();drawSunbeam(dt);drawPaper();drawFx(dt);snapLoupe();drawTouchFx(dt);drawAnim(dt);drawDoor();drawCursor();drawLoupe(dt);}
+  drawLighting();drawSunbeam(dt);drawPaper();drawFx(dt);drawGoalFx();snapLoupe();drawTouchFx(dt);drawAnim(dt);drawDoor();drawCursor();drawLoupe(dt);}
 
 /* ================= input ================= */
 function toLocal(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
@@ -1180,7 +1188,7 @@ function buildTools(){$('tools').innerHTML=[['hand','摸摸'],['treat','零食']
   $('tools').querySelectorAll('.tool').forEach(b=>b.onclick=()=>{G.tool=b.dataset.t;G.toy.visible=false;$('tools').querySelectorAll('.tool').forEach(x=>x.setAttribute('aria-pressed',x.dataset.t===G.tool));});
   $('needs').innerHTML=[['full','飽足','bowl'],['hydra','水分','drop'],['clean','貓砂','sand'],['energy','精神','moon']].map(([k,l,i])=>`<div class="need" id="n_${k}">${ICON[i]}<span>${l}</span><i><b></b></i></div>`).join('');}
 let capHTML='',capAt=0;
-function renderHUD(){const c=G.cat;
+function renderHUD(){const c=G.cat;renderGoal();
   if(momentFor&&(!c||c.held||G.t-momentT>9))closeMoments();placeMoments();
   $('clock').textContent=fmtT(G.gmin)+(cssW>480?`（${daypart(hour())}）`:'');
   if(!c)return;
@@ -1334,6 +1342,7 @@ document.querySelectorAll('#book [role=tab]').forEach(b=>b.onclick=()=>setTab(b.
 $('bookBtn').onclick=()=>$('book').hidden?openBook():closeBook();
 $('whoBtn').onclick=()=>openBook('grow');
 $('bookClose').onclick=closeBook;
+$('goal').onclick=()=>openBook('rel');
 $('menuBtn').onclick=()=>{if($('menu').hidden){closeBook();$('menu').hidden=false;$('scrim').hidden=false;}else closeMenu();};
 $('scrim').onclick=()=>{closeBook();closeMenu();};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('guide').hidden){closeBook();closeMenu();}});
