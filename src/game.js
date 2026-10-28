@@ -938,19 +938,29 @@ const MOMENTS=[
   ['慢慢眨眼',c=>{if(c.te()>.5){c.slowBlink=1.1;c.m.trust=Math.min(1,c.m.trust+.02);return '牠也慢慢眨了一下眼睛。這是貓在說「我信任你」。';}return '牠看著你，沒有眨眼。';}],
   ['叫牠的名字',c=>{c.kick({earUp:3});if(c.te()>.5&&c.q.soc>.4){c.decideT=0;return '牠「喵」了一聲，朝你走過來。';}return '牠的耳朵動了一下，沒有過來。';}]]},
 ];
-let momentFor=null,momentT=0;
+let momentFor=null,momentT=0,momentCat=null;
+function placeMoments(){const c=momentCat,box=$('moments');if(!c||box.hidden)return;box.style.left=clamp(c.head.x*cssW/W,90,cssW-90)+'px';box.style.top=Math.max(120,c.head.y*cssH/H-36*c.S*cssH/H)+'px';}
 function openMoments(c){if(!c||c.held||c.inside)return;const row=MOMENTS.find(r=>r.when(c));const box=$('moments');
+  if(['wander','explore','approach','avoid','chase','zoom','stalk','investigate','tailchase','stretch'].includes(c.beh))c.setBeh('sit');c.mv=null;c.decideT=9;momentCat=c;
   box.innerHTML=row.opts.map(([l],i)=>`<button type="button" class="btn" data-i="${i}">${l}</button>`).join('');
   box.style.left=clamp(c.head.x*cssW/W,90,cssW-90)+'px';box.style.top=Math.max(120,c.head.y*cssH/H-36*c.S*cssH/H)+'px';box.hidden=false;momentFor=c.beh;momentT=G.t;
   box.querySelectorAll('button').forEach(b=>b.onclick=e=>{e.stopPropagation();const [l,fn]=row.opts[+b.dataset.i];const txt=fn(c);closeMoments();G.lastInteract=G.gmin;if(txt){log(`你${l}。${txt}`);if(G.anim&&G.anim.t===0)G.anim.after=[l,txt];else toast(l,txt);}});}
 function closeMoments(){const b=$('moments');if(b)b.hidden=true;momentFor=null;}
 /* ---- ghost hand + moment animations ----
    The hand is never a real hand: a wobbly ink outline over a faint paper wash, fading in and out. */
-const HAND=[[0,-1],[-4,2],[-4.6,14],[-5,25],[-12,26.5],[-19,30],[-24,35],[-22.5,40],[-16,39.5],[-15.5,47],[-14,58],[-8,66],[6,66],[14,58],[17.5,46],[17.5,36],[15,31],[11,29],[7,28.5],[4.6,14],[4,2]];
-function ghostHand(x,y,rot,sc,a){if(a<=0)return;ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.scale(sc,sc);ctx.globalAlpha=a;
-  ctx.fillStyle='rgba(255,252,245,.42)';spath(ctx,HAND);ctx.fill();ctx.strokeStyle=INK;ctx.lineWidth=1.7/sc;ctx.lineJoin='round';spath(ctx,jit(HAND,1500,.7/sc*1.2));ctx.stroke();
-  ctx.globalAlpha=a*.5;ctx.lineWidth=1.2/sc;for(const [x0,y0,x1,y1] of [[5,30,11,33],[9,40,15,41]]){ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();}
-  ctx.restore();ctx.globalAlpha=1;}
+/* chibi hand: round finger, soft fist, wrist fading out; drawn opaque on its own layer, then laid on translucent */
+const handCv=document.createElement('canvas'),handX=handCv.getContext('2d');
+function rrect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+function ghostHand(x,y,rot,sc,a){if(a<=0)return;const px=DPR*cssW/W*sc,Wd=70,Ht=110;handCv.width=Math.ceil(Wd*px);handCv.height=Math.ceil(Ht*px);
+  const h=handX;h.setTransform(px,0,0,px,Wd/2*px,6*px);h.clearRect(-Wd,-10,Wd*2,Ht*2);h.lineJoin='round';h.lineCap='round';
+  const shapes=()=>{rrect(h,-5,-2,10,34,5);h.fill();h.stroke();rrect(h,-15,24,31,32,13);h.fill();h.stroke();h.fillRect(-11,40,23,60);h.beginPath();h.moveTo(-11,46);h.lineTo(-11,100);h.moveTo(12,46);h.lineTo(12,100);h.stroke();};
+  h.strokeStyle=INK;h.fillStyle=INK;h.lineWidth=3.6;shapes();          // ink pass (thick)
+  h.fillStyle=PAPER;h.strokeStyle=PAPER;h.lineWidth=.6;shapes();       // paper pass hides inner overlaps
+  h.strokeStyle=INK;h.lineWidth=1.3;h.globalAlpha=.55;                 // soft details: thumb + knuckles
+  h.beginPath();h.moveTo(-15,38);h.quadraticCurveTo(-6,35,1,40);h.stroke();for(const k of [-3,5])h.beginPath(),h.moveTo(k,26),h.quadraticCurveTo(k+2,29,k+4,26),h.stroke();
+  h.globalAlpha=1;h.setTransform(1,0,0,1,0,0);h.globalCompositeOperation='destination-out';
+  const g=h.createLinearGradient(0,54*px,0,Ht*px);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,1)');h.fillStyle=g;h.fillRect(0,0,handCv.width,handCv.height);h.globalCompositeOperation='source-over';
+  ctx.save();ctx.translate(x,y);ctx.rotate(rot);ctx.globalAlpha=a*.78;ctx.drawImage(handCv,-Wd/2*sc,-6*sc,Wd*sc,Ht*sc);ctx.restore();ctx.globalAlpha=1;}
 function startAnim(kind,c,opt={}){G.anim={kind,c,t:0,dur:kind==='paw'?2.7:2.5,...opt};if(kind==='chin'){c.setBeh('sit');c.mv=null;c.decideT=3;}}
 const ease=t=>t<0?0:t>1?1:t*t*(3-2*t);
 function drawAnim(dt){const A=G.anim;if(!A)return;A.t+=dt;const t=A.t,c=A.c;
@@ -959,7 +969,7 @@ function drawAnim(dt){const A=G.anim;if(!A)return;A.t+=dt;const t=A.t,c=A.c;
     const inK=ease(t/.55),outK=ease((t-2)/.45),sx=cx+c.facing*(26*c.S)*(1-inK)+c.facing*30*c.S*outK,sy=cy+70*c.S*(1-inK)+60*c.S*outK;
     const rub=t>.55&&t<2?Math.sin((t-.55)*10)*5*c.S:0;
     if(c.chinOn){ctx.globalAlpha=.5;for(let i=0;i<3;i++)inkL(ctx,[[cx-8*c.S+i*6*c.S+rub*.4,cy+2*c.S],[cx-6*c.S+i*6*c.S+rub*.6,cy+6*c.S]],1520+i,1.1,.3);ctx.globalAlpha=1;}
-    ghostHand(sx+rub,sy+2*c.S,c.facing*-.15,.62*c.S,Math.min(1,t/.3)*(1-outK)*.95);return;}
+    ghostHand(sx+rub,sy+2*c.S,c.facing*-.15,.6*c.S,Math.min(1,t/.3)*(1-outK)*.95);return;}
   if(A.kind==='paw'){const fade=Math.min(1,t/.25)*(1-ease((t-2.35)/.35)),pw=Math.min(W*.86,400),ph=pw*.72,px=W/2,py=Math.max(FT*.75,ph/2+70),k=pw/320;
     ctx.globalAlpha=fade*.28;ctx.fillStyle=INK;ctx.fillRect(0,0,W,H);ctx.globalAlpha=fade;
     const x0=px-pw/2,y0=py-ph/2;ctx.fillStyle='#efe2cd';ctx.fillRect(x0,y0,pw,ph);
@@ -974,7 +984,7 @@ function drawAnim(dt){const A=G.anim;if(!A)return;A.t+=dt;const t=A.t,c=A.c;
     if(sp>.5){ctx.globalAlpha=fade*(sp-.5)*1.6;for(let i=0;i<4;i++){const a=-2.4+i*.55;inkL(ctx,[[fx+Math.cos(a)*84*k,fy+Math.sin(a)*72*k],[fx+Math.cos(a)*96*k,fy+Math.sin(a)*82*k]],1550+i,1.6,.3);}ctx.globalAlpha=fade;}
     // ghost finger comes in from the lower right, touches the big pad, leaves
     const inK=ease((t-.2)/.55),outK=ease((t-1.55)/.5),tx=fx+6*k,ty=fy+22*k,hx=lerp(px+pw*.55,tx,inK)+(px+pw*.6-tx)*outK,hy=lerp(py+ph*.8,ty,inK)+(py+ph*.85-ty)*outK;
-    ghostHand(hx,hy,-.55,1.25*k,(1-outK)*.95);
+    ghostHand(hx,hy,-.55,1.3*k,(1-outK)*.95);
     ctx.restore();ctx.globalAlpha=fade;ink(ctx,box4(x0,y0,x0+pw,y0+ph),1560,{lw:2.4,smooth:false,amp:1});
     ctx.fillStyle=INK;ctx.font=`700 ${Math.round(14*k+4)}px LXGW WenKai TC, serif`;ctx.textAlign='left';ctx.fillText(A.pull?'……':'（偷偷地）',x0+12,y0+26*k+6);ctx.globalAlpha=1;}}
 function label(x,y,t){ctx.font='700 14px LXGW WenKai TC, serif';const w=ctx.measureText(t).width+18;x=clamp(x,w/2+6,W-w/2-6);
@@ -1098,7 +1108,7 @@ function buildTools(){$('tools').innerHTML=[['hand','摸摸'],['treat','零食']
   $('needs').innerHTML=[['full','飽足','bowl'],['hydra','水分','drop'],['clean','貓砂','sand'],['energy','精神','moon']].map(([k,l,i])=>`<div class="need" id="n_${k}">${ICON[i]}<span>${l}</span><i><b></b></i></div>`).join('');}
 let capHTML='',capAt=0;
 function renderHUD(){const c=G.cat;
-  if(momentFor&&(!c||c.beh!==momentFor||G.t-momentT>7))closeMoments();
+  if(momentFor&&(!c||c.held||G.t-momentT>9))closeMoments();placeMoments();
   $('clock').textContent=fmtT(G.gmin)+(cssW>480?`（${daypart(hour())}）`:'');
   if(!c)return;
   const vals={full:c.nd.full,hydra:c.nd.hydra,clean:clamp(1-G.dirt/6-G.puddles.length*.15,0,1),energy:1-c.m.fatigue};
