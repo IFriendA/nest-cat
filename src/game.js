@@ -995,13 +995,45 @@ function renderRel(){const R=G.rel,box=$('relBox');if(!R||!box)return;const cur=
   <div class="ph"><h3>現在：${cur.n}</h3></div><p class="note">${cur.d}</p>
   ${cur.soon?'<p class="note">下一段還在路上。</p>':`<ul class="tasks">${cur.ms.map(([id,t,hint])=>R.done[id]?`<li class="done"><span class="ck">✓</span><span>${t}</span></li>`:`<li><span class="ck"></span><span>${R.stage===0?t+'<br><small class="sub">'+hint+'</small>':'？？？<br><small class="sub">'+hint+'</small>'}</span></li>`).join('')}</ul>
   ${REL[R.stage+1]&&!REL[R.stage+1].soon?`<p class="sub">做到這些「第一次」，就會進到「${REL[R.stage+1].n}」。</p>`:''}`}`;}
+/* ================= first-time tutorial: dim everything, light up one spot, one step at a time ================= */
+const TUT=[
+ {t:c=>`牠叫${c.name}，剛來到這個窩，還有點怕生。<br>接下來帶你認識怎麼照顧牠。`,tg:'cat',next:1},
+ {t:()=>'牠肚子餓了。<br><b>點一下紅色的飯碗</b>，倒一碗飼料。',tg:'food',done:()=>G.rel.done.feed},
+ {t:()=>'再<b>點藍色的水碗</b>，換一碗清水。',tg:'water',done:()=>G.rel.done.water},
+ {t:()=>'用手指<b>在牠身上來回滑</b>，輕輕摸牠。<br>摸太久牠會煩喔。',tg:'cat',tool:'hand',done:()=>tut.pet>1.2},
+ {t:()=>'<b>輕點牠一下</b>，看看現在可以為牠做什麼。',tg:'cat',tool:'hand',done:()=>tut.menu},
+ {t:()=>'<b>選一個</b>試試看。',tg:'#moments',done:()=>tut.pick},
+ {t:()=>'這是牠的狀態：飽足、水分、貓砂、精神。<br>變黃、變紅就是需要你照顧了。',tg:'#needs',next:1},
+ {t:()=>'這裡是你的工具。<br>貓砂髒了、地上有尿，選「清潔」擦一擦；也可以給零食、拿逗貓棒陪牠玩。',tg:'#tools',next:1},
+ {t:()=>'這裡會告訴你下一步。<br>完成每個「第一次」，你們的關係就會往前走。',tg:'#goal',next:1},
+ {t:()=>'手帳裡記著你們的關係、牠的性格和每天發生的事。<br>剩下的，就靠你自己慢慢發現了。',tg:'#bookBtn',next:1}];
+let tut=null;
+function startTut(){if(!G.cat||G.revoked)return;tut={i:0,pet:0,menu:0,pick:0,shown:-1};$('tut').hidden=false;$('toasts').style.visibility='hidden';}
+function endTut(){tut=null;$('tut').hidden=true;$('toasts').style.visibility='';$('goal').style.visibility='';try{localStorage.setItem('nest-tut-done','1');localStorage.setItem('nest-guide-seen','1');}catch(_){}}
+function tutHole(tg){const c=G.cat,sr=stage.getBoundingClientRect(),k=cssW/W;
+  if(tg==='cat')return {x:c.x*k,y:(c.y-34*c.S)*k,r:62*c.S*k};
+  if(tg==='food'||tg==='water'){const b=G.L[tg];return {x:b.x*k,y:(b.y-10)*k,r:46*k+10};}
+  const el=$(tg.slice(1));if(!el||el.hidden)return null;const r=el.getBoundingClientRect();return {x:r.left-sr.left+r.width/2,y:r.top-sr.top+r.height/2,r:Math.max(r.width,r.height)/2+10,rw:r.width/2+12,rh:r.height/2+12};}
+function tutTick(){if(!tut)return;const st=TUT[tut.i],c=G.cat;if(!c){endTut();return;}
+  if(st.tool&&G.tool!==st.tool){G.tool=st.tool;$('tools').querySelectorAll('.tool').forEach(x=>x.setAttribute('aria-pressed',x.dataset.t===G.tool));}
+  if(c.petting)tut.pet+=.15;
+  if(st.tg==='#moments'&&$('moments').hidden&&!tut.pick){tut.i--;tut.menu=0;}
+  if(st.done&&st.done()){tut.i++;if(tut.i>=TUT.length){endTut();return;}}
+  const cur=TUT[tut.i];$('goal').style.visibility=cur.tg==='#goal'?'':'hidden';const h=tutHole(cur.tg),box=$('tut'),dim=box.querySelector('.tdim'),ring=box.querySelector('.tring'),tip=box.querySelector('.ttip');if(!h)return;
+  const w=stage.clientWidth,ht=stage.clientHeight,rw=h.rw||h.r,rh=h.rh||h.r;
+  dim.style.clipPath=`path(evenodd,'M0 0H${w}V${ht}H0Z M${h.x-rw} ${h.y} a${rw} ${rh} 0 1 0 ${rw*2} 0 a${rw} ${rh} 0 1 0 ${-rw*2} 0Z')`;
+  Object.assign(ring.style,{left:h.x-rw+'px',top:h.y-rh+'px',width:rw*2+'px',height:rh*2+'px'});
+  if(tut.shown!==tut.i){tut.shown=tut.i;tip.innerHTML=`<p>${cur.t(c)}</p><div class="trow"><button type="button" class="tskip">跳過教學</button>${cur.next?`<button type="button" class="btn primary tnext">${tut.i===TUT.length-1?'開始吧':'下一步'}</button>`:`<span class="tstep">${tut.i+1} / ${TUT.length}</span>`}</div>`;
+    tip.querySelector('.tskip').onclick=endTut;const nb=tip.querySelector('.tnext');if(nb)nb.onclick=()=>{tut.i++;if(tut.i>=TUT.length)endTut();};}
+  const tw=Math.min(330,w-24),below=h.y<ht*.5;tip.style.width=tw+'px';tip.style.left=clamp(h.x-tw/2,12,w-tw-12)+'px';
+  if(below){tip.style.top=Math.min(ht-160,h.y+rh+16)+'px';tip.style.bottom='auto';}else{tip.style.bottom=Math.min(ht-160,ht-h.y+rh+16)+'px';tip.style.top='auto';}}
 let momentFor=null,momentT=0,momentCat=null;
 function placeMoments(){const c=momentCat,box=$('moments');if(!c||box.hidden)return;box.style.left=clamp(c.head.x*cssW/W,90,cssW-90)+'px';box.style.top=Math.max(120,c.head.y*cssH/H-36*c.S*cssH/H)+'px';}
 function openMoments(c){if(!c||c.held||c.inside)return;const row0=MOMENTS.find(r=>r.when(c)),st=relStage(),row={opts:row0.opts.filter(o=>(OPT_MIN[o[0]]||0)<=st)},locked=row0.opts.some(o=>(OPT_MIN[o[0]]||0)>st);const box=$('moments');
   if(['wander','explore','approach','avoid','chase','zoom','stalk','investigate','tailchase','stretch'].includes(c.beh))c.setBeh('sit');c.mv=null;c.decideT=9;momentCat=c;
   box.innerHTML=row.opts.map(([l],i)=>`<button type="button" class="btn" data-i="${i}">${l}</button>`).join('')+(locked?'<button type="button" class="btn locked" disabled>？？？（關係更好時）</button>':'');
-  box.style.left=clamp(c.head.x*cssW/W,90,cssW-90)+'px';box.style.top=Math.max(120,c.head.y*cssH/H-36*c.S*cssH/H)+'px';box.hidden=false;momentFor=c.beh;momentT=G.t;
-  box.querySelectorAll('button[data-i]').forEach(b=>b.onclick=e=>{e.stopPropagation();const [l,fn]=row.opts[+b.dataset.i];const txt=fn(c);closeMoments();G.lastInteract=G.gmin;if(txt){log(`你${l}。${txt}`);if(G.anim&&G.anim.t===0)G.anim.after=[l,txt];else toast(l,txt);}});}
+  box.style.left=clamp(c.head.x*cssW/W,90,cssW-90)+'px';box.style.top=Math.max(120,c.head.y*cssH/H-36*c.S*cssH/H)+'px';box.hidden=false;momentFor=c.beh;momentT=G.t;if(tut)tut.menu=1;
+  box.querySelectorAll('button[data-i]').forEach(b=>b.onclick=e=>{e.stopPropagation();const [l,fn]=row.opts[+b.dataset.i];if(tut)tut.pick=1;const txt=fn(c);closeMoments();G.lastInteract=G.gmin;if(txt){log(`你${l}。${txt}`);if(G.anim&&G.anim.t===0)G.anim.after=[l,txt];else toast(l,txt);}});}
 function closeMoments(){const b=$('moments');if(b)b.hidden=true;momentFor=null;}
 /* ---- ghost hand + moment animations ----
    The hand is never a real hand: a wobbly ink outline over a faint paper wash, fading in and out. */
@@ -1188,7 +1220,7 @@ function buildTools(){$('tools').innerHTML=[['hand','摸摸'],['treat','零食']
   $('tools').querySelectorAll('.tool').forEach(b=>b.onclick=()=>{G.tool=b.dataset.t;G.toy.visible=false;$('tools').querySelectorAll('.tool').forEach(x=>x.setAttribute('aria-pressed',x.dataset.t===G.tool));});
   $('needs').innerHTML=[['full','飽足','bowl'],['hydra','水分','drop'],['clean','貓砂','sand'],['energy','精神','moon']].map(([k,l,i])=>`<div class="need" id="n_${k}">${ICON[i]}<span>${l}</span><i><b></b></i></div>`).join('');}
 let capHTML='',capAt=0;
-function renderHUD(){const c=G.cat;renderGoal();
+function renderHUD(){const c=G.cat;tutTick();renderGoal();
   if(momentFor&&(!c||c.held||G.t-momentT>9))closeMoments();placeMoments();
   $('clock').textContent=fmtT(G.gmin)+(cssW>480?`（${daypart(hour())}）`:'');
   if(!c)return;
@@ -1278,7 +1310,7 @@ function showAdopt(){const ov=$('overlay');ov.hidden=false;const archs=[...ARCH]
 function adopt(d){G.gmin=8*60;d.born=G.gmin-.3*1440;Object.assign(G,{food:.8,water:1,dirt:0,puddles:[],treats:3,ftreat:null,journal:[],revoked:false,adopted:true,lastInteract:-9999});
   G.care={neglect:0,warn:0,streak:0,badToday:false};G.door={k:0,state:'open',until:0,knocks:[],snack:false,shake:0,paw:0};
   G.cat=new Cat(d);G.rel={stage:0,done:{}};G.cat.x=W*.3;G.cat.y=480;$('overlay').hidden=true;log(`${d.name}來到了牠的窩。`,true);toast('新家',`${d.name}來了。牠還小，還不會用貓砂盆。`);
-  uiDirty=true;syncDevSliders();save();let seen=false;try{seen=!!localStorage.getItem('nest-guide-seen');}catch(_){}if(!seen)setTimeout(()=>openGuide(0),600);}
+  uiDirty=true;syncDevSliders();save();let seen=false;try{seen=!!localStorage.getItem('nest-tut-done');}catch(_){}if(!seen||DEV)setTimeout(startTut,700);}
 function showRevoked(){const c=G.cat,ov=$('overlay');ov.hidden=false;
   ov.innerHTML=`<div class="sheet"><h2>${c.name}被接走了</h2><p>${c.name}太久沒有被好好照顧（${needText(c)}），救助站的人把牠帶走了。你的養貓權限被收回。</p>
   <p>牠在你這裡住了 ${Math.max(1,Math.floor(c.ageDays-.3)+1)} 天，最後記得的事：「${(MEM_TXT[(c.mem.sort((a,b)=>b.s-a.s)[0]||{k:'neglect'}).k]||MEM_TXT.neglect)[0].replace('{h}','')}」</p>

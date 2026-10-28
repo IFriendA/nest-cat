@@ -266,3 +266,17 @@ body{font-size:15.5px}
 
 .goal{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-b) + 98px);max-width:calc(100% - 24px);padding:6px 14px;font-family:var(--f-display);font-size:14.5px;color:var(--ink);border:0;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;--rb:#fff3cf}
 @media (max-width:560px){.toasts{bottom:calc(var(--safe-b) + 146px)}.goal{font-size:13.5px}}
+
+/* tutorial: dim layer with a hole (clicks pass through the hole), ring, hint card */
+.tut{position:absolute;inset:0;z-index:4;pointer-events:none}
+.tut .tdim{position:absolute;inset:0;background:rgba(28,20,14,.62);pointer-events:auto;transition:clip-path .25s}
+.tut .tring{position:absolute;border:2.5px dashed #fff3cf;border-radius:50%;animation:tpulse 1.4s ease-in-out infinite;pointer-events:none}
+@keyframes tpulse{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.07);opacity:.55}}
+.tut .ttip{position:absolute;pointer-events:auto;padding:12px 14px;font-family:var(--f-display);font-size:16px;line-height:1.55;--rb:#fffaf0}
+.tut .ttip p{margin:0 0 10px}
+.tut .ttip b{background:#f3d58a;padding:0 3px;border-radius:4px}
+.tut .trow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tut .tskip{border:0;background:none;color:var(--muted);font:inherit;font-size:13px;cursor:pointer;padding:4px 0}
+.tut .tstep{font-size:13px;color:var(--muted)}
+.moments{z-index:6}
+@media (prefers-reduced-motion: reduce){.tut .tring{animation:none}}
