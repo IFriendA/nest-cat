@@ -967,9 +967,7 @@ function ghostHand(x,y,rot,sc,a){if(a<=0)return;const px=DPR*cssW/W*sc,Wd=96,Ht=
   h.strokeStyle=PAPER;h.fillStyle=PAPER;all(0);         // paper fill hides overlaps → one clean outline
   h.strokeStyle=INK;h.lineWidth=1.1;h.globalAlpha=.45;  // light anatomy: nails, knuckle creases, tendons
   for(const f of FINGERS){const [b,j,t,w]=f,dx=t[0]-j[0],dy=t[1]-j[1],d=Math.hypot(dx,dy),ux=dx/d,uy=dy/d,nx=-uy,ny=ux;
-    h.beginPath();h.moveTo(t[0]-ux*5+nx*w*.32,t[1]-uy*5+ny*w*.32);h.quadraticCurveTo(t[0]-ux*7.5,t[1]-uy*7.5,t[0]-ux*5-nx*w*.32,t[1]-uy*5-ny*w*.32);h.stroke();
-    h.beginPath();h.moveTo(j[0]+nx*w*.28,j[1]+ny*w*.28);h.quadraticCurveTo(j[0]+ux*1.5,j[1]+uy*1.5,j[0]-nx*w*.28,j[1]-ny*w*.28);h.stroke();}
-  h.beginPath();h.moveTo(-31,60);h.quadraticCurveTo(-29,57,-33,55);h.stroke();
+    h.beginPath();h.moveTo(t[0]-ux*5+nx*w*.32,t[1]-uy*5+ny*w*.32);h.quadraticCurveTo(t[0]-ux*7.5,t[1]-uy*7.5,t[0]-ux*5-nx*w*.32,t[1]-uy*5-ny*w*.32);h.stroke();}
   h.globalAlpha=.25;for(const f of FINGERS.slice(0,3)){h.beginPath();h.moveTo(f[0][0]*.6,82);h.lineTo(f[0][0],f[0][1]+4);h.stroke();}
   h.globalAlpha=1;h.setTransform(1,0,0,1,0,0);h.globalCompositeOperation='destination-out';
   const g=h.createLinearGradient(0,(oy+72)*px,0,Ht*px);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,1)');h.fillStyle=g;h.fillRect(0,0,handCv.width,handCv.height);h.globalCompositeOperation='source-over';
