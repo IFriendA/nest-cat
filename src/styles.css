@@ -269,11 +269,11 @@ body{font-size:15.5px}
 
 /* tutorial: dim layer with a hole (clicks pass through the hole), ring, hint card */
 .tut{position:absolute;inset:0;z-index:4;pointer-events:none}
-.tut .tdim{position:absolute;inset:0;background:rgba(28,20,14,.62);pointer-events:auto;will-change:transform;transform:translateZ(0)}
-.tut .tring{position:absolute;left:0;top:0;pointer-events:none;will-change:transform}
+.tut .tdim{position:absolute;inset:0;background:rgba(28,20,14,.62);pointer-events:auto}
+.tut .tring{position:absolute;left:0;top:0;pointer-events:none}
 .tut .tring::after{content:"";position:absolute;inset:0;border:2.5px dashed #fff3cf;border-radius:50%;animation:tpulse 1.4s ease-in-out infinite}
 @keyframes tpulse{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.07);opacity:.55}}
-.tut .ttip{position:absolute;pointer-events:auto;will-change:transform;padding:12px 14px;font-family:var(--f-display);font-size:16px;line-height:1.55;--rb:#fffaf0}
+.tut .ttip{position:absolute;pointer-events:auto;padding:12px 14px;font-family:var(--f-display);font-size:16px;line-height:1.55;--rb:#fffaf0}
 .tut .ttip p{margin:0 0 10px}
 .tut .ttip b{background:#f3d58a;padding:0 3px;border-radius:4px}
 .tut .trow{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -281,3 +281,10 @@ body{font-size:15.5px}
 .tut .tstep{font-size:13px;color:var(--muted)}
 .moments{z-index:6}
 @media (prefers-reduced-motion: reduce){.tut .tring{animation:none}}
+
+/* performance: no live SVG filters anywhere (slow on mobile Safari). The hand-drawn outline is a static 9-slice image. */
+:root{--rough:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M15.81,2.62 L18.44,2.53 L20.59,2.85 L22.34,3.01 L24.60,2.93 L26.91,2.55 L29.57,3.36 L31.52,2.70 L34.34,3.68 L36.48,3.65 L38.99,4.22 L40.72,5.79 L41.55,7.20 L43.04,9.83 L43.86,11.63 L44.95,13.59 L45.05,15.52 L44.52,17.95 L45.20,20.47 L44.80,22.92 L44.95,24.88 L45.32,27.60 L44.72,29.74 L45.03,32.35 L45.06,33.97 L44.76,35.98 L43.19,38.74 L41.60,40.32 L39.87,42.12 L38.81,43.33 L36.87,44.01 L34.48,44.91 L32.09,44.95 L30.10,45.49 L27.42,45.18 L24.69,45.22 L23.06,45.54 L20.97,44.76 L18.22,45.19 L15.54,44.96 L13.44,44.39 L11.12,44.53 L9.13,43.00 L7.55,42.39 L5.60,40.32 L4.81,38.94 L4.14,36.86 L2.96,34.17 L2.84,32.42 L3.50,29.34 L2.64,27.15 L2.71,25.15 L3.10,22.63 L2.45,20.53 L2.86,18.42 L3.50,16.28 L3.20,13.93 L3.96,11.11 L5.16,9.85 L6.43,8.00 L7.50,5.95 L9.04,4.90 L11.06,3.31 L13.41,2.83Z' fill='none' stroke='%232c2723' stroke-width='1.9' stroke-linejoin='round'/%3E%3C/svg%3E")}
+.paper::before,.btn::before,.tool::before,.tabs button::before,.seg button::before,.book::before,.sheet::before,.kit::before,.toast::before,.banner::before,.gbox::before,.trait::before{
+  filter:none!important;border:2px solid transparent!important;border-image:var(--rough) 16 / 14px stretch;border-radius:12px}
+.tool:not([aria-pressed="true"])::before,.tabs button:not([aria-selected="true"])::before,.seg button:not([aria-pressed="true"])::before{border-image:none}
+.need i,.lifebar i,.tool svg,.ibtn svg,.need svg,.tasks .ck{filter:none!important}
