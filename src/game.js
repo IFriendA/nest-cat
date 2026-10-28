@@ -876,10 +876,35 @@ function drawTouchFx(dt){const F=G.fx,ptr=G.ptr,c=G.cat;
   ctx.globalAlpha=.16;ctx.fillStyle=pet?'#e87888':'#3d7564';ctx.beginPath();ctx.arc(ptr.x,ptr.y,pet?30:24,0,TAU);ctx.fill();ctx.globalAlpha=1;
   // long-press ring: "hold to pick up"
   if(G.tool==='hand'&&ptr.petCat===c&&c&&!c.held&&ptr.moved<8&&ptr.downT>.12&&ptr.downT<.6){const k=(ptr.downT-.12)/.48;
-    ctx.strokeStyle='#3d7564';ctx.lineWidth=4;ctx.lineCap='round';ctx.beginPath();ctx.arc(ptr.x,ptr.y,38,-Math.PI/2,-Math.PI/2+TAU*k);ctx.stroke();
-    label(ptr.x,ptr.y-56,'按住抱起');}
-  else if(pet&&c.petRegion)label(ptr.x,ptr.y-52,REG_TXT[c.petRegion]+(c.m.annoy>.4?'…牠不太高興':''));
+    ctx.strokeStyle='#3d7564';ctx.lineWidth=4;ctx.lineCap='round';ctx.beginPath();ctx.arc(ptr.x,ptr.y,38,-Math.PI/2,-Math.PI/2+TAU*k);ctx.stroke();}
   else if(G.tool==='broom')label(ptr.x,ptr.y-100,'來回擦');}
+/* ---- loupe: a magnifier beside the finger, showing the cat's face the finger is covering ---- */
+const loupeCv=document.createElement('canvas'),loupeX=loupeCv.getContext('2d');
+const LP={a:0,x:0,y:0,sx:0,sy:0,on:false};
+function loupeWanted(){const ptr=G.ptr,c=G.cat;return !!(c&&ptr.in&&ptr.down&&ptr.type!=='mouse'&&G.tool==='hand'&&ptr.petCat===c&&!c.held&&G.door.state==='open');}
+function snapLoupe(){LP.on=loupeWanted();if(!LP.on&&LP.a<=0)return;const c=G.cat;if(!c)return;
+  // what to magnify: the face, nudged toward the finger so the stroked spot stays in view
+  const ptr=G.ptr,tx=lerp(c.head.x,ptr.x,.3),ty=lerp(c.head.y,ptr.y,.3)-4*c.S;
+  if(LP.on){LP.sx=LP.a<=0?tx:lerp(LP.sx,tx,.35);LP.sy=LP.a<=0?ty:lerp(LP.sy,ty,.35);}
+  const ps=cv.width/W,sr=LOUPE_R/LOUPE_Z,sz=Math.ceil(sr*2*ps);
+  if(loupeCv.width!==sz){loupeCv.width=sz;loupeCv.height=sz;}
+  loupeX.clearRect(0,0,sz,sz);loupeX.drawImage(cv,(LP.sx-sr)*ps,(LP.sy-sr)*(cv.height/H),sr*2*ps,sr*2*(cv.height/H),0,0,sz,sz);}
+const LOUPE_R=62,LOUPE_Z=1.9;
+function drawLoupe(dt){const ptr=G.ptr,c=G.cat;LP.a=clamp(LP.a+(LP.on?dt*7:-dt*6),0,1);if(LP.a<=0||!c)return;
+  // place it above the finger, flipping sideways near the top edge
+  let tx=ptr.x,ty=ptr.y-LOUPE_R-78;if(ty<LOUPE_R+70){ty=ptr.y-20;tx=ptr.x+(ptr.x<W/2?1:-1)*(LOUPE_R+70);}
+  tx=clamp(tx,LOUPE_R+8,W-LOUPE_R-8);
+  if(LP.on){LP.x=LP.a<.05?tx:lerp(LP.x,tx,.25);LP.y=LP.a<.05?ty:lerp(LP.y,ty,.25);}
+  const R=LOUPE_R*(.75+.25*LP.a),x=LP.x,y=LP.y;ctx.save();ctx.globalAlpha=LP.a;
+  ctx.fillStyle='rgba(44,39,35,.18)';ctx.beginPath();ctx.arc(x+3,y+5,R,0,TAU);ctx.fill();
+  ctx.save();ctx.beginPath();ctx.arc(x,y,R,0,TAU);ctx.clip();ctx.fillStyle=PAPER;ctx.fillRect(x-R,y-R,R*2,R*2);ctx.drawImage(loupeCv,x-R,y-R,R*2,R*2);ctx.restore();
+  ink(ctx,ellPts(x,y,R,R,30),1480,{lw:2.6,amp:.7});
+  // where the finger is, inside the loupe
+  const fx=x+(ptr.x-LP.sx)*LOUPE_Z,fy=y+(ptr.y-LP.sy)*LOUPE_Z;if(Math.hypot(fx-x,fy-y)<R-8){ctx.globalAlpha=LP.a*.7;inkL(ctx,ellPts(fx,fy,9,9,12).concat([[fx+9,fy]]),1481,1.6,.4);ctx.globalAlpha=LP.a;}
+  // reaction caption under the loupe
+  const reg=c.petting&&c.petRegion?REG_TXT[c.petRegion]:(ptr.downT<.6&&ptr.moved<8?'按住抱起':'');const cap=caption(c),mood=c.m.annoy>.4?'不太高興':cap?cap[0]:'';
+  const t=[reg,mood].filter(Boolean).join(' · ');if(t)label(x,y+R+18,t);
+  ctx.restore();}
 function label(x,y,t){ctx.font='700 14px LXGW WenKai TC, serif';const w=ctx.measureText(t).width+18;x=clamp(x,w/2+6,W-w/2-6);
   ctx.globalAlpha=.94;ink(ctx,box4(x-w/2,y-13,x+w/2,y+10),1470,{fill:PAPER,lw:1.4,amp:.5});ctx.fillStyle=INK;ctx.textAlign='center';ctx.fillText(t,x,y+3);ctx.textAlign='left';ctx.globalAlpha=1;}
 function drawCursor(){const ptr=G.ptr;if(!ptr.in||G.door.state==='closed'&&G.tool==='wand')return;
@@ -954,7 +979,7 @@ function render(dt){
   if(G.ftreat&&G.adopted)items.push({y:G.ftreat.y,f:()=>{const t=G.ftreat;ctx.fillStyle='rgba(60,30,20,.2)';ctx.beginPath();ctx.ellipse(t.x,t.y,12,3.5,0,0,TAU);ctx.fill();drawTreatIcon(t.x-3,t.y-6,.9);}});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.f());
   if(G.bug&&G.bug.mode!=='land')drawBug();
-  drawLighting();drawFx(dt);drawTouchFx(dt);drawDoor();drawCursor();}
+  drawLighting();drawFx(dt);snapLoupe();drawTouchFx(dt);drawDoor();drawCursor();drawLoupe(dt);}
 
 /* ================= input ================= */
 function toLocal(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
