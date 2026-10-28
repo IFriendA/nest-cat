@@ -1018,6 +1018,8 @@ function tutHole(tg){const c=G.cat,sr=stage.getBoundingClientRect(),k=cssW/W;
   if(tg==='cat')return {x:c.x*k,y:(c.y-34*c.S)*k,r:62*c.S*k};
   if(tg==='food'||tg==='water'){const b=G.L[tg];return {x:b.x*k,y:(b.y-10)*k,r:46*k+10};}
   const el=$(tg.slice(1));if(!el||el.hidden)return null;const r=el.getBoundingClientRect();return {x:r.left-sr.left+r.width/2,y:r.top-sr.top+r.height/2,r:Math.max(r.width,r.height)/2+10,rw:r.width/2+12,rh:r.height/2+12};}
+function tutFollow(){if(!tut)return;const cur=TUT[tut.i];if(!cur)return;const h=tutHole(cur.tg);if(!h)return;const ring=$('tut').querySelector('.tring'),rw=h.rw||h.r,rh=h.rh||h.r;
+  ring.style.transform=`translate(${(h.x-rw).toFixed(1)}px,${(h.y-rh).toFixed(1)}px)`;const sw=Math.round(rw*2)+'px',sh=Math.round(rh*2)+'px';if(ring.style.width!==sw)ring.style.width=sw;if(ring.style.height!==sh)ring.style.height=sh;}
 function tutTick(){if(!tut)return;const st=TUT[tut.i],c=G.cat;if(!c){endTut();return;}
   if(st.tool&&G.tool!==st.tool){G.tool=st.tool;$('tools').querySelectorAll('.tool').forEach(x=>x.setAttribute('aria-pressed',x.dataset.t===G.tool));}
   if(c.petting)tut.pet+=.15;
@@ -1028,7 +1030,7 @@ function tutTick(){if(!tut)return;const st=TUT[tut.i],c=G.cat;if(!c){endTut();re
   const q=v=>Math.round(v/4)*4,key=[q(h.x),q(h.y),q(rw),q(rh),w,ht].join();
   if(key!==tut.key){tut.key=key;const X=q(h.x),Y=q(h.y),RW=q(rw),RH=q(rh);
     dim.style.clipPath=`path(evenodd,'M0 0H${w}V${ht}H0Z M${X-RW} ${Y} a${RW} ${RH} 0 1 0 ${RW*2} 0 a${RW} ${RH} 0 1 0 ${-RW*2} 0Z')`;
-    ring.style.transform=`translate(${X-RW}px,${Y-RH}px)`;const sw=RW*2+'px',sh=RH*2+'px';if(ring.style.width!==sw)ring.style.width=sw;if(ring.style.height!==sh)ring.style.height=sh;}
+    }
   if(tut.shown!==tut.i){tut.shown=tut.i;tip.innerHTML=`<p>${cur.t(c)}</p><div class="trow"><button type="button" class="tskip">跳過教學</button>${cur.next?`<button type="button" class="btn primary tnext">${tut.i===TUT.length-1?'開始吧':'下一步'}</button>`:`<span class="tstep">${tut.i+1} / ${TUT.length}</span>`}</div>`;
     tip.querySelector('.tskip').onclick=endTut;const nb=tip.querySelector('.tnext');if(nb)nb.onclick=()=>{tut.i++;if(tut.i>=TUT.length)endTut();};}
   if(tut.tipKey===tut.i+'|'+key)return;tut.tipKey=tut.i+'|'+key;
@@ -1181,7 +1183,7 @@ function render(dt){
   if(G.ftreat&&G.adopted)items.push({y:G.ftreat.y,f:()=>{const t=G.ftreat;ctx.fillStyle='rgba(60,30,20,.2)';ctx.beginPath();ctx.ellipse(t.x,t.y,12,3.5,0,0,TAU);ctx.fill();drawTreatIcon(t.x-3,t.y-6,.9);}});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.f());
   if(G.bug&&G.bug.mode!=='land')drawBug();
-  drawLighting();drawSunbeam(dt);drawFx(dt);drawGoalFx();snapLoupe();drawTouchFx(dt);drawAnim(dt);drawDoor();drawCursor();drawLoupe(dt);}
+  drawLighting();drawSunbeam(dt);drawFx(dt);drawGoalFx();tutFollow();snapLoupe();drawTouchFx(dt);drawAnim(dt);drawDoor();drawCursor();drawLoupe(dt);}
 
 /* ================= input ================= */
 function toLocal(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height};}
