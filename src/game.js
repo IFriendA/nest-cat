@@ -70,7 +70,7 @@ class Cat{
   }
   save(){const k=['name','coatId','arch','p','traits','revealed','born','mem','litter','counts','tasks','feedHours','stageIdx','notes','trustBase','m','nd','x','y'];const o={};for(const x of k)o[x]=this[x];o.coat=this.coatId;return o;}
   has(t){return this.traits.includes(t);}
-  reveal(t){if(!this.has(t)||this.revealed[t])return;this.revealed[t]=G.gmin;toast('發現性格',`${this.name}原來是「${TRAITS[t].n}」的貓。`);log(`發現${this.name}的性格：${TRAITS[t].n}`,true);uiDirty=true;}
+  reveal(t){if(!this.has(t)||this.revealed[t])return;this.revealed[t]=G.gmin;relHit('reveal');toast('發現性格',`${this.name}原來是「${TRAITS[t].n}」的貓。`);log(`發現${this.name}的性格：${TRAITS[t].n}`,true);uiDirty=true;}
   get ageDays(){return (G.gmin-this.born)/1440;}
   calcStage(){const a=this.ageDays;let s=0;for(let i=0;i<STAGES.length;i++)if(a>=STAGES[i].from)s=i;this.stage=s;
     const st=STAGES[s],f=clamp((a-st.from)/(st.to-st.from),0,1);
@@ -309,7 +309,7 @@ class Cat{
   feedHabit(){let best=-1,bi=null;for(let i=0;i<24;i++){const c=this.feedHours[i]+.5*(this.feedHours[(i+1)%24]+this.feedHours[(i+23)%24]);if(c>best){best=c;bi=i;}}return best>=2?bi+.5:null;}
   faceTo(x){if(Math.abs(x-this.x)>14*this.S)this.facing=Math.sign(x-this.x);}
 
-  event(k){
+  event(k){relHit(k);
     const s=this.stage,T=this.tasks,done=id=>{const key=s+':'+id;if(T[key])return;const def=TASKS[s].find(t=>t[0]===id);if(!def)return;T[key]=G.gmin;toast('成長',`${this.name}：${def[1]}`);log(`成長紀錄：${def[1]}`,true);uiDirty=true;};
     switch(k){
       case 'petGood':this.counts.petGood++;this.remember('petgood',.3,.4);if(s===0)done('pet');break;
@@ -932,7 +932,7 @@ function drawLoupe(dt){const ptr=G.ptr,c=G.cat;LP.a=clamp(LP.a+(LP.on?dt*7:-dt*6
    Each row: when(cat) → up to 3 choices. A choice is [label, react(cat) → result line]. Add moments by adding rows. */
 const MOMENTS=[
  {when:c=>c.beh==='nap',opts:[
-  ['偷摸肉墊',c=>{if(c.q.tol<.35){startAnim('paw',c,{pull:1});return '牠把腳收進身體底下，皺了皺眉，繼續睡。';}startAnim('paw',c);c.m.trust=Math.min(1,c.m.trust+.01);return '牠的腳趾張開又縮回去，沒醒，咂咂嘴繼續睡。';}],
+  ['偷摸肉墊',c=>{if(c.q.tol<.35){startAnim('paw',c,{pull:1});return '牠把腳收進身體底下，皺了皺眉，繼續睡。';}startAnim('paw',c);relHit('paw');c.m.trust=Math.min(1,c.m.trust+.01);return '牠的腳趾張開又縮回去，沒醒，咂咂嘴繼續睡。';}],
   ['輕摸頭',c=>{if(c.grudge()>.4){c.kick({earUp:-3});return '牠半睜開眼瞪了你一下，又閉上了。';}c.kick({earUp:3});c.remember('petsleep',.25,.3);return '耳朵抖了一下，發出一聲短短的呼嚕。';}],
   ['讓牠睡',c=>{c.m.trust=Math.min(1,c.m.trust+.01);return '你沒有吵牠。牠睡得很沉，肚子一起一伏。';}]]},
  {when:c=>c.beh==='hide',opts:[
@@ -953,20 +953,47 @@ const MOMENTS=[
   ['不打擾',c=>'牠舔完了，滿意地坐著。']]},
  {when:c=>['approach','rub','greet'].includes(c.beh),opts:[
   ['摸摸牠',c=>{c.setBeh('rub');return '牠用頭頂著你的手，蹭了一圈。';}],
-  ['慢慢眨眼',c=>{if(c.te()>.5){c.slowBlink=1.1;c.m.trust=Math.min(1,c.m.trust+.02);return '牠也慢慢眨了一下眼睛。這是貓在說「我信任你」。';}return '牠盯著你，沒有眨眼。還需要一點時間。';}],
+  ['慢慢眨眼',c=>{if(c.te()>.5){c.slowBlink=1.1;c.m.trust=Math.min(1,c.m.trust+.02);relHit('blink');return '牠也慢慢眨了一下眼睛。這是貓在說「我信任你」。';}return '牠盯著你，沒有眨眼。還需要一點時間。';}],
   ['就這樣待著',c=>{c.setBeh('sit');c.m.trust=Math.min(1,c.m.trust+.01);return '牠在你旁邊坐下，尾巴繞住了腳。';}]]},
  {when:c=>true,opts:[
-  ['摸下巴',c=>{if(c.te()<.3){c.kick({earUp:-2});return '牠往後躲了一下。還不夠信任你。';}startAnim('chin',c);return '牠把頭抬高，瞇起眼睛，把下巴送到你手上。';}],
-  ['慢慢眨眼',c=>{if(c.te()>.5){c.slowBlink=1.1;c.m.trust=Math.min(1,c.m.trust+.02);return '牠也慢慢眨了一下眼睛。這是貓在說「我信任你」。';}return '牠看著你，沒有眨眼。';}],
+  ['摸下巴',c=>{if(c.te()<.3){c.kick({earUp:-2});return '牠往後躲了一下。還不夠信任你。';}startAnim('chin',c);relHit('chin');return '牠把頭抬高，瞇起眼睛，把下巴送到你手上。';}],
+  ['慢慢眨眼',c=>{if(c.te()>.5){c.slowBlink=1.1;c.m.trust=Math.min(1,c.m.trust+.02);relHit('blink');return '牠也慢慢眨了一下眼睛。這是貓在說「我信任你」。';}return '牠看著你，沒有眨眼。';}],
   ['叫牠的名字',c=>{c.kick({earUp:3});if(c.te()>.5&&c.q.soc>.4){c.decideT=0;return '牠「喵」了一聲，朝你走過來。';}return '牠的耳朵動了一下，沒有過來。';}]]},
 ];
+/* ================= main line: your relationship with the cat =================
+   Each stage = a few "first times". Finish them all → next stage → something new unlocks. */
+const REL=[
+ {n:'陌生',d:'牠剛來，還不認識你。先把牠照顧好。',un:'點一下貓，會出現「你現在可以做的事」。',
+  ms:[['feed','第一次為牠倒飼料','點紅色的飯碗'],['water','第一次為牠換水','點藍色的水碗'],['clean','第一次幫牠清理','用「清潔」擦貓砂盆或地上的尿']]},
+ {n:'試探',d:'牠在偷偷觀察你。耐心一點。',un:'點貓時可以摸頭、摸背、戳紙箱了。',
+  ms:[['approach','牠第一次主動走向你','把手放著別動，等牠過來'],['petGood','第一次讓你摸得很舒服','摸頭或背，別摸太久'],['rub','牠第一次蹭你的手','也許牠會自己來']]},
+ {n:'熟悉',d:'牠開始習慣你了。試著讀懂牠。',un:'解鎖「慢慢眨眼」和「摸下巴」。',
+  ms:[['reveal','第一次發現牠的性格','多觀察牠在不同情況下的反應'],['playHit','第一次陪牠玩到撲中','用逗貓棒'],['blink','牠第一次回你慢慢眨眼','貓用眨眼說「我信任你」']]},
+ {n:'信任',d:'牠相信你不會傷害牠。',un:'解鎖「偷摸肉墊」。',
+  ms:[['chin','第一次幫牠抓下巴','牠願意的時候'],['sleepNear','牠第一次在你附近睡著','陪著牠就好'],['paw','第一次偷摸到肉墊','等牠睡熟']]},
+ {n:'親密',d:'牠會主動來找你。',un:'',ms:[],soon:1},
+ {n:'家人',d:'',un:'',ms:[],soon:1}];
+const OPT_MIN={'輕摸頭':1,'戳戳箱子':1,'摸背':1,'摸牠':1,'摸摸牠':1,'慢慢眨眼':2,'摸下巴':2,'偷摸肉墊':3};
+const relStage=()=>G.rel?G.rel.stage:0;
+function relHit(id){const R=G.rel;if(!R||R.done[id]||G.revoked)return;const m=REL.flatMap(r=>r.ms).find(x=>x[0]===id);if(!m)return;
+  R.done[id]=G.gmin;if(!G.ff){toast('第一次',m[1]+'。');}log(`第一次：${m[1]}。`,true);uiDirty=true;
+  while(REL[R.stage+1]&&!REL[R.stage].soon&&REL[R.stage].ms.every(x=>R.done[x[0]])&&!REL[R.stage+1].soon){R.stage++;relUp(R.stage);}
+  if(REL[R.stage+1]&&REL[R.stage+1].soon&&REL[R.stage].ms.every(x=>R.done[x[0]])&&!R.capped){R.capped=1;relUp(R.stage+1,true);}}
+function relUp(s,soon){log(`你們的關係：${REL[s-1].n} → ${REL[s].n}`,true);if(G.ff){G.relQ=s;return;}
+  const ov=$('overlay');ov.innerHTML=`<div class="sheet relup"><p class="sub">你們的關係</p><h2>${REL[s-1].n} → ${REL[s].n}</h2><p>${soon?'下一段關係還在路上，之後的版本會開放。':REL[s].d}</p>${!soon&&REL[s].un?`<div class="note">新解鎖：${REL[s].un}</div>`:''}<button type="button" class="btn primary" id="relOk">好</button></div>`;
+  ov.hidden=false;$('relOk').onclick=()=>{ov.hidden=true;};}
+function renderRel(){const R=G.rel,box=$('relBox');if(!R||!box)return;const cur=REL[R.stage];
+  box.innerHTML=`<div class="relladder">${REL.map((r,i)=>`<span class="${i<R.stage?'past':i===R.stage?'cur':''}">${r.n}</span>`).join('<i>·</i>')}</div>
+  <div class="ph"><h3>現在：${cur.n}</h3></div><p class="note">${cur.d}</p>
+  ${cur.soon?'<p class="note">下一段還在路上。</p>':`<ul class="tasks">${cur.ms.map(([id,t,hint])=>R.done[id]?`<li class="done"><span class="ck">✓</span><span>${t}</span></li>`:`<li><span class="ck"></span><span>${R.stage===0?t+'<br><small class="sub">'+hint+'</small>':'？？？<br><small class="sub">'+hint+'</small>'}</span></li>`).join('')}</ul>
+  ${REL[R.stage+1]&&!REL[R.stage+1].soon?`<p class="sub">做到這些「第一次」，就會進到「${REL[R.stage+1].n}」。</p>`:''}`}`;}
 let momentFor=null,momentT=0,momentCat=null;
 function placeMoments(){const c=momentCat,box=$('moments');if(!c||box.hidden)return;box.style.left=clamp(c.head.x*cssW/W,90,cssW-90)+'px';box.style.top=Math.max(120,c.head.y*cssH/H-36*c.S*cssH/H)+'px';}
-function openMoments(c){if(!c||c.held||c.inside)return;const row=MOMENTS.find(r=>r.when(c));const box=$('moments');
+function openMoments(c){if(!c||c.held||c.inside)return;const row0=MOMENTS.find(r=>r.when(c)),st=relStage(),row={opts:row0.opts.filter(o=>(OPT_MIN[o[0]]||0)<=st)},locked=row0.opts.some(o=>(OPT_MIN[o[0]]||0)>st);const box=$('moments');
   if(['wander','explore','approach','avoid','chase','zoom','stalk','investigate','tailchase','stretch'].includes(c.beh))c.setBeh('sit');c.mv=null;c.decideT=9;momentCat=c;
-  box.innerHTML=row.opts.map(([l],i)=>`<button type="button" class="btn" data-i="${i}">${l}</button>`).join('');
+  box.innerHTML=row.opts.map(([l],i)=>`<button type="button" class="btn" data-i="${i}">${l}</button>`).join('')+(locked?'<button type="button" class="btn locked" disabled>？？？（關係更好時）</button>':'');
   box.style.left=clamp(c.head.x*cssW/W,90,cssW-90)+'px';box.style.top=Math.max(120,c.head.y*cssH/H-36*c.S*cssH/H)+'px';box.hidden=false;momentFor=c.beh;momentT=G.t;
-  box.querySelectorAll('button').forEach(b=>b.onclick=e=>{e.stopPropagation();const [l,fn]=row.opts[+b.dataset.i];const txt=fn(c);closeMoments();G.lastInteract=G.gmin;if(txt){log(`你${l}。${txt}`);if(G.anim&&G.anim.t===0)G.anim.after=[l,txt];else toast(l,txt);}});}
+  box.querySelectorAll('button[data-i]').forEach(b=>b.onclick=e=>{e.stopPropagation();const [l,fn]=row.opts[+b.dataset.i];const txt=fn(c);closeMoments();G.lastInteract=G.gmin;if(txt){log(`你${l}。${txt}`);if(G.anim&&G.anim.t===0)G.anim.after=[l,txt];else toast(l,txt);}});}
 function closeMoments(){const b=$('moments');if(b)b.hidden=true;momentFor=null;}
 /* ---- ghost hand + moment animations ----
    The hand is never a real hand: a wobbly ink outline over a faint paper wash, fading in and out. */
@@ -1091,8 +1118,8 @@ function step(dt){const ptr=G.ptr;touchFx(dt);
   ptr.lx=ptr.x;ptr.ly=ptr.y;ptr.stillT=ptr.speed<55?ptr.stillT+dt:0;
   const c=G.cat;
   if(ptr.down){ptr.downT+=dt;if(c&&ptr.petCat===c&&!c.held&&ptr.downT>.6&&ptr.moved<8&&G.tool==='hand'&&!['flee','startle','swat','door'].includes(c.beh)){c.petting=false;c.pickUp();}}
-  if(ptr.down&&G.tool==='broom'&&c&&G.adopted&&!G.revoked&&G.door.state==='open'){const L=G.L;for(let i=G.puddles.length-1;i>=0;i--){const pd=G.puddles[i];if(Math.hypot(ptr.x-pd.x,(ptr.y-pd.y)*1.6)<52){G.puddles.splice(i,1);G.fx.puffs.push({x:pd.x,y:pd.y,t:0});log('你把地上的尿擦乾淨了。');}}
-    if(G.dirt>0&&inRect(ptr.x,ptr.y,L.litter.x,L.litter.y-L.litter.d/2,L.litter.w/2+12,L.litter.d+12)){G.dirt=0;G.fx.rake=.8;log('你清好了貓砂盆。');}}
+  if(ptr.down&&G.tool==='broom'&&c&&G.adopted&&!G.revoked&&G.door.state==='open'){const L=G.L;for(let i=G.puddles.length-1;i>=0;i--){const pd=G.puddles[i];if(Math.hypot(ptr.x-pd.x,(ptr.y-pd.y)*1.6)<52){G.puddles.splice(i,1);G.fx.puffs.push({x:pd.x,y:pd.y,t:0});log('你把地上的尿擦乾淨了。');relHit('clean');}}
+    if(G.dirt>0&&inRect(ptr.x,ptr.y,L.litter.x,L.litter.y-L.litter.d/2,L.litter.w/2+12,L.litter.d+12)){G.dirt=0;G.fx.rake=.8;log('你清好了貓砂盆。');relHit('clean');}}
   if(!c||G.revoked||!G.adopted||G.paused)return;
   advanceGame(dt*G.speed);if(G.revoked)return;
   updateToy(dt);updateBall(dt);updateBug(dt);updateBird(dt);updateDoor(dt);
@@ -1124,10 +1151,10 @@ cv.addEventListener('pointerdown',e=>{closeMoments();if(!G.adopted||G.revoked)re
     if(c.m.annoy>.5){G.pokes=G.pokes.filter(t=>G.t-t<3);G.pokes.push(G.t);if(G.pokes.length>=3){G.pokes=[];buzz([30,40,30]);screenSwipe();c.m.annoy=Math.min(1,c.m.annoy+.25);c.remember('overpet',-.5,.6);log(`${c.name}受夠了，隔著螢幕拍了你一掌。`,true);p.petCat=null;}}
     return;}
   const b=G.ball;if(Math.hypot(q.x-b.x,q.y-(b.y-12))<26){p.grabBall=true;return;}
-  if(inRect(q.x,q.y,L.food.x,L.food.y-12,34,26)){G.food=1;G.fx.pours.push({x:L.food.x,y:L.food.y-16,t:0});c.hear(L.food.x,L.food.y,.3);c.lastFill=G.t;c.feedHours[Math.floor(hour())]++;c.counts.feeds++;c.remember('fed',.3,.4);c.m.trust=Math.min(1,c.m.trust+.02);log('你倒了一碗飼料。');G.lastInteract=G.gmin;return;}
-  if(inRect(q.x,q.y,L.water.x,L.water.y-12,32,24)){G.water=1;G.fx.pours.push({x:L.water.x,y:L.water.y-16,t:0,water:1});log('你換了一碗乾淨的水。');return;}
-  if(inRect(q.x,q.y,L.litter.x,L.litter.y-L.litter.d/2,L.litter.w/2,L.litter.d)){if(G.dirt>0){G.dirt=0;G.fx.rake=.8;log('你鏟了貓砂。');}return;}
-  for(let i=G.puddles.length-1;i>=0;i--){const pd=G.puddles[i];if(Math.hypot(q.x-pd.x,(q.y-pd.y)*2)<44){G.puddles.splice(i,1);G.fx.puffs.push({x:pd.x,y:pd.y,t:0});log('你擦掉了地上的尿。');return;}}
+  if(inRect(q.x,q.y,L.food.x,L.food.y-12,34,26)){G.food=1;G.fx.pours.push({x:L.food.x,y:L.food.y-16,t:0});c.hear(L.food.x,L.food.y,.3);c.lastFill=G.t;c.feedHours[Math.floor(hour())]++;c.counts.feeds++;c.remember('fed',.3,.4);c.m.trust=Math.min(1,c.m.trust+.02);log('你倒了一碗飼料。');relHit('feed');G.lastInteract=G.gmin;return;}
+  if(inRect(q.x,q.y,L.water.x,L.water.y-12,32,24)){G.water=1;G.fx.pours.push({x:L.water.x,y:L.water.y-16,t:0,water:1});log('你換了一碗乾淨的水。');relHit('water');return;}
+  if(inRect(q.x,q.y,L.litter.x,L.litter.y-L.litter.d/2,L.litter.w/2,L.litter.d)){if(G.dirt>0){G.dirt=0;G.fx.rake=.8;log('你鏟了貓砂。');relHit('clean');}return;}
+  for(let i=G.puddles.length-1;i>=0;i--){const pd=G.puddles[i];if(Math.hypot(q.x-pd.x,(q.y-pd.y)*2)<44){G.puddles.splice(i,1);G.fx.puffs.push({x:pd.x,y:pd.y,t:0});log('你擦掉了地上的尿。');relHit('clean');return;}}
   if(inRect(q.x,q.y,L.box.x,L.box.y-L.box.h/2,L.box.w/2,L.box.h)){G.fx.ripples.push({x:q.x,y:L.box.y,t:0});c.hear(q.x,L.box.y,.6);if(c.beh==='hide'){c.m.fear+=.2*(1-c.q.bold);c.kick({mouth:4});}return;}
   if(q.y>FT-10){G.fx.ripples.push({x:q.x,y:floorY(q.y),t:0});c.hear(q.x,floorY(q.y));}});
 const up=e=>{const p=G.ptr,c=G.cat;
@@ -1198,7 +1225,7 @@ function caption(c){if(!G.adopted||G.revoked)return null;const b=c.beh,m=c.m,P=c
   if(b==='window')return ['看窗外',G.bird?'有鳥！下巴在發抖、發出喀喀聲。':'看外面的天空和樹。'];
   if(b==='scratch')return ['磨爪子','伸長身體磨爪：保養爪子，也在宣示地盤。'];
   return null;}
-function renderPanels(){const c=G.cat;if(!c)return;
+function renderPanels(){const c=G.cat;if(!c)return;renderRel();
   $('catName').textContent=c.name;drawPortrait($('avatar'),c.coatId,c.stage);
   const a=c.ageDays;$('ageTxt').textContent=`出生第 ${Math.floor(a)+1} 天`;
   $('lifebar').innerHTML=STAGES.map((s,i)=>{const f=i<c.stage?1:i>c.stage?0:clamp((a-s.from)/(s.to-s.from),0,1);return `<div class="${i===c.stage?'cur':''}"><i><b style="width:${Math.round(f*100)}%"></b></i>${s.n}</div>`;}).join('');
@@ -1242,7 +1269,7 @@ function showAdopt(){const ov=$('overlay');ov.hidden=false;const archs=[...ARCH]
   ov.querySelectorAll('.kit').forEach((b,i)=>{drawPortrait(b.querySelector('canvas'),adoptOpts[i].coat,0);b.onclick=()=>adopt(adoptOpts[i]);});}
 function adopt(d){G.gmin=8*60;d.born=G.gmin-.3*1440;Object.assign(G,{food:.8,water:1,dirt:0,puddles:[],treats:3,ftreat:null,journal:[],revoked:false,adopted:true,lastInteract:-9999});
   G.care={neglect:0,warn:0,streak:0,badToday:false};G.door={k:0,state:'open',until:0,knocks:[],snack:false,shake:0,paw:0};
-  G.cat=new Cat(d);G.cat.x=W*.3;G.cat.y=480;$('overlay').hidden=true;log(`${d.name}來到了牠的窩。`,true);toast('新家',`${d.name}來了。牠還小，還不會用貓砂盆。`);
+  G.cat=new Cat(d);G.rel={stage:0,done:{}};G.cat.x=W*.3;G.cat.y=480;$('overlay').hidden=true;log(`${d.name}來到了牠的窩。`,true);toast('新家',`${d.name}來了。牠還小，還不會用貓砂盆。`);
   uiDirty=true;syncDevSliders();save();let seen=false;try{seen=!!localStorage.getItem('nest-guide-seen');}catch(_){}if(!seen)setTimeout(()=>openGuide(0),600);}
 function showRevoked(){const c=G.cat,ov=$('overlay');ov.hidden=false;
   ov.innerHTML=`<div class="sheet"><h2>${c.name}被接走了</h2><p>${c.name}太久沒有被好好照顧（${needText(c)}），救助站的人把牠帶走了。你的養貓權限被收回。</p>
@@ -1281,10 +1308,10 @@ function fastForward(hours,noCare){const c=G.cat;if(!c||G.revoked)return;const s
   if(!c.inside){c.setBeh(c.q.soc>.5&&c.te()>.4&&c.beh!=='nap'?'greet':c.beh);}
   uiDirty=true;}
 const SKEY='nest-cat-v2';
-function save(){if(!G.cat)return;try{localStorage.setItem(SKEY,JSON.stringify({at:Date.now(),gmin:G.gmin,speed:G.speed,food:G.food,water:G.water,dirt:G.dirt,puddles:G.puddles,treats:G.treats,care:G.care,journal:G.journal.slice(0,60),revoked:G.revoked,cat:G.cat.save(),door:{until:G.door.until,state:G.door.state==='closed'||G.door.state==='closing'?'closed':'open'}}));}catch(_){}}
+function save(){if(!G.cat)return;try{localStorage.setItem(SKEY,JSON.stringify({at:Date.now(),gmin:G.gmin,speed:G.speed,food:G.food,water:G.water,dirt:G.dirt,puddles:G.puddles,treats:G.treats,care:G.care,journal:G.journal.slice(0,60),rel:G.rel,revoked:G.revoked,cat:G.cat.save(),door:{until:G.door.until,state:G.door.state==='closed'||G.door.state==='closing'?'closed':'open'}}));}catch(_){}}
 function load(){let s=null;try{s=JSON.parse(localStorage.getItem(SKEY)||'null');}catch(_){s=null;}if(!s||!s.cat)return false;
   Object.assign(G,{gmin:s.gmin,speed:s.speed||10,food:s.food,water:s.water,dirt:s.dirt,puddles:s.puddles||[],treats:s.treats??3,care:s.care,journal:s.journal||[],revoked:s.revoked,adopted:true});
-  G.cat=new Cat(s.cat);G.cat.x=clamp(G.cat.x,45,W-45);
+  G.cat=new Cat(s.cat);G.rel=s.rel||{stage:0,done:{}};G.cat.x=clamp(G.cat.x,45,W-45);
   if(s.door&&s.door.state==='closed'){G.door.state='closed';G.door.k=1;G.door.until=s.door.until;G.cat.inside=true;}
   document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.sp===G.speed));
   if(G.revoked){showRevoked();return true;}
@@ -1297,7 +1324,7 @@ $('ffBtn').onclick=()=>fastForward(3);
 $('growBtn').onclick=()=>{const c=G.cat;if(!c||c.stage>=3)return;c.born=G.gmin-STAGES[c.stage+1].from*1440-1;uiDirty=true;};
 $('helpBtn').onclick=()=>{closeMenu();openGuide();};
 /* ---- notebook (drawer on wide screens, bottom sheet on phones) & menu ---- */
-let bookTab='grow';
+let bookTab='rel';
 function setTab(t){bookTab=t;document.querySelectorAll('#book [role=tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));document.querySelectorAll('#book .tabp').forEach(p=>p.hidden=p.dataset.p!==t);if(t==='dev')syncDevSliders();uiDirty=true;}
 function openBook(t){closeMenu();if(t)setTab(t);$('book').hidden=false;$('scrim').hidden=false;uiDirty=true;}
 function closeBook(){$('book').hidden=true;if($('menu').hidden)$('scrim').hidden=true;}

@@ -50,14 +50,16 @@
   <div class="grab" aria-hidden="true"></div>
   <div class="bookhd"><h2>手帳</h2><button class="btn" id="bookClose">收起</button></div>
   <div class="tabs" role="tablist">
-    <button role="tab" data-tab="grow" aria-selected="true">成長</button>
+    <button role="tab" data-tab="rel" aria-selected="true">關係</button>
+    <button role="tab" data-tab="grow" aria-selected="false">成長</button>
     <button role="tab" data-tab="traits" aria-selected="false">性格</button>
     <button role="tab" data-tab="mem" aria-selected="false">記憶</button>
     <button role="tab" data-tab="log" aria-selected="false">手記</button>
     <button role="tab" data-tab="dev" aria-selected="false" id="devTab" hidden>開發</button>
   </div>
   <div class="bookbody">
-    <section class="tabp" data-p="grow">
+    <section class="tabp" data-p="rel"><div id="relBox" style="display:grid;gap:10px"></div></section>
+    <section class="tabp" data-p="grow" hidden>
       <div class="ph"><h3>成長</h3><span class="sub" id="ageTxt"></span></div>
       <div class="lifebar" id="lifebar"></div>
       <div class="sub" id="growEta"></div>

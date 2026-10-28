@@ -254,3 +254,12 @@ body{font-size:15.5px}
 /* moment choices: handwritten notes floating above the cat */
 .moments{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:6px;z-index:5;animation:tin .25s ease-out}
 .moments .btn{font-size:15px;padding:7px 16px;white-space:nowrap;--rb:#fffaf0}
+
+/* relationship line */
+.relladder{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-family:var(--f-display);font-size:15px;color:var(--muted)}
+.relladder i{font-style:normal;opacity:.5}
+.relladder .past{color:var(--ink)}
+.relladder .cur{color:var(--ink);font-weight:700;background:#f3d58a;padding:0 8px;border-radius:8px 6px 9px 5px}
+.tasks small{font-size:12.5px}
+.moments .btn.locked{opacity:.55;cursor:default;font-size:13px}
+.relup h2{font-size:28px}
