@@ -1025,10 +1025,13 @@ function tutTick(){if(!tut)return;const st=TUT[tut.i],c=G.cat;if(!c){endTut();re
   if(st.done&&st.done()){tut.i++;if(tut.i>=TUT.length){endTut();return;}}
   const cur=TUT[tut.i];$('goal').style.visibility=cur.tg==='#goal'?'':'hidden';const h=tutHole(cur.tg),box=$('tut'),dim=box.querySelector('.tdim'),ring=box.querySelector('.tring'),tip=box.querySelector('.ttip');if(!h)return;
   const w=stage.clientWidth,ht=stage.clientHeight,rw=h.rw||h.r,rh=h.rh||h.r;
-  dim.style.clipPath=`path(evenodd,'M0 0H${w}V${ht}H0Z M${h.x-rw} ${h.y} a${rw} ${rh} 0 1 0 ${rw*2} 0 a${rw} ${rh} 0 1 0 ${-rw*2} 0Z')`;
-  Object.assign(ring.style,{left:h.x-rw+'px',top:h.y-rh+'px',width:rw*2+'px',height:rh*2+'px'});
+  const q=v=>Math.round(v/4)*4,key=[q(h.x),q(h.y),q(rw),q(rh),w,ht].join();
+  if(key!==tut.key){tut.key=key;const X=q(h.x),Y=q(h.y),RW=q(rw),RH=q(rh);
+    dim.style.clipPath=`path(evenodd,'M0 0H${w}V${ht}H0Z M${X-RW} ${Y} a${RW} ${RH} 0 1 0 ${RW*2} 0 a${RW} ${RH} 0 1 0 ${-RW*2} 0Z')`;
+    ring.style.transform=`translate(${X-RW}px,${Y-RH}px)`;ring.style.width=RW*2+'px';ring.style.height=RH*2+'px';}
   if(tut.shown!==tut.i){tut.shown=tut.i;tip.innerHTML=`<p>${cur.t(c)}</p><div class="trow"><button type="button" class="tskip">跳過教學</button>${cur.next?`<button type="button" class="btn primary tnext">${tut.i===TUT.length-1?'開始吧':'下一步'}</button>`:`<span class="tstep">${tut.i+1} / ${TUT.length}</span>`}</div>`;
     tip.querySelector('.tskip').onclick=endTut;const nb=tip.querySelector('.tnext');if(nb)nb.onclick=()=>{tut.i++;if(tut.i>=TUT.length)endTut();};}
+  if(tut.tipKey===tut.i+'|'+key)return;tut.tipKey=tut.i+'|'+key;
   const tw=Math.min(330,w-24),below=h.y<ht*.5;tip.style.width=tw+'px';tip.style.left=clamp(h.x-tw/2,12,w-tw-12)+'px';
   if(below){tip.style.top=Math.min(ht-160,h.y+rh+16)+'px';tip.style.bottom='auto';}else{tip.style.bottom=Math.min(ht-160,ht-h.y+rh+16)+'px';tip.style.top='auto';}}
 let momentFor=null,momentT=0,momentCat=null;
