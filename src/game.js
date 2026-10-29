@@ -1019,7 +1019,12 @@ function tutHole(tg){const c=G.cat,sr=stage.getBoundingClientRect(),k=cssW/W;
   if(tg==='food'||tg==='water'){const b=G.L[tg];return {x:b.x*k,y:(b.y-10)*k,r:46*k+10};}
   const el=$(tg.slice(1));if(!el||el.hidden)return null;const r=el.getBoundingClientRect();return {x:r.left-sr.left+r.width/2,y:r.top-sr.top+r.height/2,r:Math.max(r.width,r.height)/2+10,rw:r.width/2+12,rh:r.height/2+12};}
 function tutFollow(){if(!tut)return;const cur=TUT[tut.i];if(!cur)return;const h=tutHole(cur.tg);if(!h)return;const ring=$('tut').querySelector('.tring'),rw=h.rw||h.r,rh=h.rh||h.r;
-  ring.style.transform=`translate(${(h.x-rw).toFixed(1)}px,${(h.y-rh).toFixed(1)}px)`;const sw=Math.round(rw*2)+'px',sh=Math.round(rh*2)+'px';if(ring.style.width!==sw)ring.style.width=sw;if(ring.style.height!==sh)ring.style.height=sh;}
+  ring.style.transform=`translate(${(h.x-rw).toFixed(1)}px,${(h.y-rh).toFixed(1)}px)`;
+  const tip=$('tut').querySelector('.ttip'),w=stage.clientWidth,ht=stage.clientHeight,tw=Math.min(330,w-24),th=tip.offsetHeight||120;
+  if(tip.style.width!==tw+'px'){tip.style.width=tw+'px';tip.style.left='0';tip.style.top='0';tip.style.bottom='auto';}
+  const below=h.y<ht*.5,tx=clamp(h.x-tw/2,12,w-tw-12),ty=below?Math.min(ht-th-12,h.y+rh+16):Math.max(12,h.y-rh-16-th);
+  if(tut.tx===undefined||tut.tipStep!==tut.i){tut.tx=tx;tut.ty=ty;tut.tipStep=tut.i;}else{tut.tx+=(tx-tut.tx)*.25;tut.ty+=(ty-tut.ty)*.25;}
+  tip.style.transform=`translate(${tut.tx.toFixed(1)}px,${tut.ty.toFixed(1)}px)`;const sw=Math.round(rw*2)+'px',sh=Math.round(rh*2)+'px';if(ring.style.width!==sw)ring.style.width=sw;if(ring.style.height!==sh)ring.style.height=sh;}
 function tutTick(){if(!tut)return;const st=TUT[tut.i],c=G.cat;if(!c){endTut();return;}
   if(st.tool&&G.tool!==st.tool){G.tool=st.tool;$('tools').querySelectorAll('.tool').forEach(x=>x.setAttribute('aria-pressed',x.dataset.t===G.tool));}
   if(c.petting)tut.pet+=.15;
@@ -1033,9 +1038,7 @@ function tutTick(){if(!tut)return;const st=TUT[tut.i],c=G.cat;if(!c){endTut();re
     }
   if(tut.shown!==tut.i){tut.shown=tut.i;tip.innerHTML=`<p>${cur.t(c)}</p><div class="trow"><button type="button" class="tskip">跳過教學</button>${cur.next?`<button type="button" class="btn primary tnext">${tut.i===TUT.length-1?'開始吧':'下一步'}</button>`:`<span class="tstep">${tut.i+1} / ${TUT.length}</span>`}</div>`;
     tip.querySelector('.tskip').onclick=endTut;const nb=tip.querySelector('.tnext');if(nb)nb.onclick=()=>{tut.i++;if(tut.i>=TUT.length)endTut();};}
-  if(tut.tipKey===tut.i+'|'+key)return;tut.tipKey=tut.i+'|'+key;
-  const tw=Math.min(330,w-24),below=h.y<ht*.5;tip.style.width=tw+'px';tip.style.left=clamp(h.x-tw/2,12,w-tw-12)+'px';
-  if(below){tip.style.top=Math.min(ht-160,h.y+rh+16)+'px';tip.style.bottom='auto';}else{tip.style.bottom=Math.min(ht-160,ht-h.y+rh+16)+'px';tip.style.top='auto';}}
+}
 let momentFor=null,momentT=0,momentCat=null;
 function placeMoments(){const c=momentCat,box=$('moments');if(!c||box.hidden)return;box.style.left=clamp(c.head.x*cssW/W,90,cssW-90)+'px';box.style.top=Math.max(120,c.head.y*cssH/H-36*c.S*cssH/H)+'px';}
 function openMoments(c){if(!c||c.held||c.inside)return;const row0=MOMENTS.find(r=>r.when(c)),st=relStage(),row={opts:row0.opts.filter(o=>(OPT_MIN[o[0]]||0)<=st)},locked=row0.opts.some(o=>(OPT_MIN[o[0]]||0)>st);const box=$('moments');
